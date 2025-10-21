@@ -124,133 +124,97 @@ const TeamWorkloadMetrics: React.FC<TeamWorkloadMetricsProps> = ({ projects, use
     }
 
     return (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <i className="fas fa-chart-pie text-blue-600 mr-2"></i>
+                <h3 className="text-lg font-medium text-gray-900">
                     Charge de travail de l'équipe
                 </h3>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-400">
                     {roleWorkloads.length} rôle{roleWorkloads.length > 1 ? 's' : ''} • {users.length} utilisateur{users.length > 1 ? 's' : ''}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {roleWorkloads.map((roleData) => (
-                    <div key={roleData.role} className="bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200">
+                    <div key={roleData.role} className="bg-gray-50 rounded-lg border border-gray-100 p-4">
                         {/* Header du rôle */}
-                        <div className="p-4 border-b border-gray-200">
-                            <div className="flex items-center space-x-3">
-                                <div className={`w-12 h-12 ${getRoleColor(roleData.role)} rounded-lg flex items-center justify-center text-white font-bold text-lg`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                                <div className={`w-8 h-8 ${getRoleColor(roleData.role)} rounded-full flex items-center justify-center text-white text-sm font-medium`}>
                                     {getRoleDisplayName(roleData.role).charAt(0)}
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-gray-900">{getRoleDisplayName(roleData.role)}</h4>
-                                    <p className="text-sm text-gray-500">{roleData.users.length} membre{roleData.users.length > 1 ? 's' : ''}</p>
+                                    <h4 className="font-medium text-gray-900 text-sm">{getRoleDisplayName(roleData.role)}</h4>
+                                    <p className="text-xs text-gray-500">{roleData.users.length} membre{roleData.users.length > 1 ? 's' : ''}</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Métriques */}
-                        <div className="p-4 space-y-4">
-                            {/* Projets */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{roleData.totalProjects}</div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide">Projets</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-600">{roleData.activeProjects}</div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide">Actifs</div>
-                                </div>
+                        {/* Métriques essentielles */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <div className="text-lg font-semibold text-gray-900">{roleData.totalProjects}</div>
+                                <div className="text-xs text-gray-500">Projets</div>
                             </div>
-
-                            {/* Tâches */}
-                            <div className="text-center">
-                                <div className="text-3xl font-bold text-purple-600">{roleData.totalTasks}</div>
-                                <div className="text-xs text-gray-500 uppercase tracking-wide">Tâches</div>
+                            <div>
+                                <div className="text-lg font-semibold text-gray-900">{roleData.totalTasks}</div>
+                                <div className="text-xs text-gray-500">Tâches</div>
                             </div>
-
-                            {/* Heures */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center">
-                                    <div className="text-xl font-bold text-orange-600">{roleData.totalEstimatedHours}h</div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide">Estimées</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-xl font-bold text-teal-600">{roleData.totalLoggedHours}h</div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide">Enregistrées</div>
-                                </div>
+                            <div>
+                                <div className="text-lg font-semibold text-gray-900">{roleData.totalEstimatedHours}h</div>
+                                <div className="text-xs text-gray-500">Estimées</div>
                             </div>
-
-                            {/* Barre de progression */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-xs text-gray-500">
-                                    <span>Progression</span>
-                                    <span>{roleData.totalEstimatedHours > 0 ? Math.round((roleData.totalLoggedHours / roleData.totalEstimatedHours) * 100) : 0}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div 
-                                        className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
-                                        style={{ 
-                                            width: `${roleData.totalEstimatedHours > 0 ? Math.min((roleData.totalLoggedHours / roleData.totalEstimatedHours) * 100, 100) : 0}%` 
-                                        }}
-                                    ></div>
-                                </div>
+                            <div>
+                                <div className="text-lg font-semibold text-gray-900">{roleData.totalLoggedHours}h</div>
+                                <div className="text-xs text-gray-500">Loggées</div>
                             </div>
+                        </div>
 
-                            {/* Membres du rôle */}
-                            <div className="space-y-2">
-                                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Membres</div>
-                                <div className="flex flex-wrap gap-1">
-                                    {roleData.users.slice(0, 3).map(user => (
-                                        <div key={user.id} className="flex items-center space-x-1 bg-gray-100 rounded-full px-2 py-1">
-                                            <div className="w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                                                {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}
-                                            </div>
-                                            <span className="text-xs text-gray-700 truncate max-w-16">
-                                                {user.fullName || user.email}
-                                            </span>
-                                        </div>
-                                    ))}
-                                    {roleData.users.length > 3 && (
-                                        <div className="flex items-center space-x-1 bg-gray-100 rounded-full px-2 py-1">
-                                            <span className="text-xs text-gray-500">+{roleData.users.length - 3}</span>
-                                        </div>
-                                    )}
-                                </div>
+                        {/* Barre de progression minimaliste */}
+                        <div className="mt-3">
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>Progression</span>
+                                <span>{roleData.totalEstimatedHours > 0 ? Math.round((roleData.totalLoggedHours / roleData.totalEstimatedHours) * 100) : 0}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1">
+                                <div 
+                                    className="bg-gray-600 h-1 rounded-full"
+                                    style={{ 
+                                        width: `${roleData.totalEstimatedHours > 0 ? Math.min((roleData.totalLoggedHours / roleData.totalEstimatedHours) * 100, 100) : 0}%` 
+                                    }}
+                                ></div>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Résumé global */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Résumé global minimaliste */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="grid grid-cols-4 gap-4">
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">
+                        <div className="text-lg font-semibold text-gray-900">
                             {roleWorkloads.reduce((sum, role) => sum + role.totalProjects, 0)}
                         </div>
-                        <div className="text-sm text-gray-500">Total Projets</div>
+                        <div className="text-xs text-gray-500">Projets</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">
+                        <div className="text-lg font-semibold text-gray-900">
                             {roleWorkloads.reduce((sum, role) => sum + role.totalTasks, 0)}
                         </div>
-                        <div className="text-sm text-gray-500">Total Tâches</div>
+                        <div className="text-xs text-gray-500">Tâches</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">
+                        <div className="text-lg font-semibold text-gray-900">
                             {roleWorkloads.reduce((sum, role) => sum + role.totalEstimatedHours, 0)}h
                         </div>
-                        <div className="text-sm text-gray-500">Heures Estimées</div>
+                        <div className="text-xs text-gray-500">Estimées</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">
+                        <div className="text-lg font-semibold text-gray-900">
                             {roleWorkloads.reduce((sum, role) => sum + role.totalLoggedHours, 0)}h
                         </div>
-                        <div className="text-sm text-gray-500">Heures Loggées</div>
+                        <div className="text-xs text-gray-500">Loggées</div>
                     </div>
                 </div>
             </div>
