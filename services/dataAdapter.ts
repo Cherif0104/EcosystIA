@@ -757,40 +757,39 @@ export class DataAdapter {
   static async getMeetings(): Promise<Meeting[]> {
     return mockMeetings;
   }
-}
 
-    // Gestion des rapports de projet
-    async createProjectReport(reportData: any) {
-        console.log('🔍 DataAdapter.createProjectReport - Appel DataService.createProjectReport()');
-        const result = await DataService.createProjectReport(reportData);
-        if (result.error) {
-            console.error('❌ Erreur DataAdapter.createProjectReport:', result.error);
-            throw result.error;
-        }
-        console.log('✅ DataAdapter.createProjectReport - Rapport créé:', result.data);
-        return result.data;
+  // Gestion des rapports de projet
+  static async createProjectReport(reportData: any) {
+    console.log('🔍 DataAdapter.createProjectReport - Appel DataService.createProjectReport()');
+    const result = await DataService.createProjectReport(reportData);
+    if (result.error) {
+      console.error('❌ Erreur DataAdapter.createProjectReport:', result.error);
+      throw result.error;
     }
+    console.log('✅ DataAdapter.createProjectReport - Rapport créé:', result.data);
+    return result.data;
+  }
 
-    async getProjectReports(projectId: string) {
-        console.log('🔍 DataAdapter.getProjectReports - Appel DataService.getProjectReports()');
-        const result = await DataService.getProjectReports(projectId);
-        if (result.error) {
-            console.error('❌ Erreur DataAdapter.getProjectReports:', result.error);
-            throw result.error;
-        }
-        console.log('✅ DataAdapter.getProjectReports - Rapports récupérés:', result.data.length);
-        return result.data;
+  static async getProjectReports(projectId: string) {
+    console.log('🔍 DataAdapter.getProjectReports - Appel DataService.getProjectReports()');
+    const result = await DataService.getProjectReports(projectId);
+    if (result.error) {
+      console.error('❌ Erreur DataAdapter.getProjectReports:', result.error);
+      throw result.error;
     }
+    console.log('✅ DataAdapter.getProjectReports - Rapports récupérés:', result.data.length);
+    return result.data;
+  }
 
-    async deleteProjectReport(reportId: string) {
-        console.log('🔍 DataAdapter.deleteProjectReport - Appel DataService.deleteProjectReport()');
-        const result = await DataService.deleteProjectReport(reportId);
-        if (result.error) {
-            console.error('❌ Erreur DataAdapter.deleteProjectReport:', result.error);
-            throw result.error;
-        }
-        console.log('✅ DataAdapter.deleteProjectReport - Rapport supprimé');
+  static async deleteProjectReport(reportId: string) {
+    console.log('🔍 DataAdapter.deleteProjectReport - Appel DataService.deleteProjectReport()');
+    const result = await DataService.deleteProjectReport(reportId);
+    if (result.error) {
+      console.error('❌ Erreur DataAdapter.deleteProjectReport:', result.error);
+      throw result.error;
     }
+    console.log('✅ DataAdapter.deleteProjectReport - Rapport supprimé');
+  }
 }
 
 export default DataAdapter;
