@@ -109,6 +109,8 @@ const ProjectDetailModal: React.FC<{
     const [pendingTasks, setPendingTasks] = useState<any[]>([]);
     const [pendingRisks, setPendingRisks] = useState<any[]>([]);
     const [hasPendingChanges, setHasPendingChanges] = useState(false);
+    const [generatedReport, setGeneratedReport] = useState<string>('');
+    const [taskSummary, setTaskSummary] = useState<string>('');
 
     // États pour la gestion des tâches
     const [newTaskText, setNewTaskText] = useState('');
@@ -303,8 +305,8 @@ const ProjectDetailModal: React.FC<{
                 generatedAt: new Date().toLocaleString('fr-FR')
             };
 
-            // Afficher le résumé dans une alerte pour l'instant
-            alert(`📊 RÉSUMÉ DES TÂCHES - ${summary.projectTitle}
+            // Stocker le résumé dans l'état pour l'afficher dans l'interface
+            const summaryText = `📊 RÉSUMÉ DES TÂCHES - ${summary.projectTitle}
 
 ✅ Tâches terminées: ${summary.completedTasks}/${summary.totalTasks} (${summary.progressPercentage}%)
 🔄 Tâches en cours: ${summary.inProgressTasks}
@@ -314,8 +316,9 @@ const ProjectDetailModal: React.FC<{
 ⏱️ Heures estimées: ${summary.totalEstimatedHours}h
 ⏱️ Heures enregistrées: ${summary.totalLoggedHours}h
 
-📅 Résumé généré le: ${summary.generatedAt}`);
+📅 Résumé généré le: ${summary.generatedAt}`;
 
+            setTaskSummary(summaryText);
             setIsLoading(false);
         }, 1500);
     };
@@ -345,8 +348,8 @@ const ProjectDetailModal: React.FC<{
                 generatedAt: new Date().toLocaleString('fr-FR')
             };
 
-            // Afficher le rapport dans une alerte pour l'instant
-            alert(`📋 RAPPORT D'ÉTAT - ${report.projectTitle}
+            // Stocker le rapport dans l'état pour l'afficher dans l'interface
+            const reportText = `📋 RAPPORT D'ÉTAT - ${report.projectTitle}
 
 📊 ÉTAT DU PROJET
 • Statut: ${report.status}
@@ -362,8 +365,9 @@ const ProjectDetailModal: React.FC<{
 • Total des risques: ${report.totalRisks}
 • Risques élevés: ${report.highRiskItems}
 
-📅 Rapport généré le: ${report.generatedAt}`);
+📅 Rapport généré le: ${report.generatedAt}`;
 
+            setGeneratedReport(reportText);
             setIsLoading(false);
         }, 2000);
     };
@@ -1233,9 +1237,59 @@ const ProjectDetailModal: React.FC<{
                             )}
                             
                             {activeTab === 'report' && (
-                                <div className="text-center py-8 text-gray-500">
-                                    <i className="fas fa-file-alt text-6xl text-gray-300 mb-4"></i>
-                                    <p className="text-lg">Générer un rapport d'état ou un résumé des tâches.</p>
+                                <div className="space-y-6">
+                                    {!generatedReport && !taskSummary && (
+                                        <div className="text-center py-8 text-gray-500">
+                                            <i className="fas fa-file-alt text-6xl text-gray-300 mb-4"></i>
+                                            <p className="text-lg">Générer un rapport d'état ou un résumé des tâches.</p>
+                                        </div>
+                                    )}
+                                    
+                                    {generatedReport && (
+                                        <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                                    <i className="fas fa-file-alt text-blue-600 mr-2"></i>
+                                                    Rapport d'état généré
+                                                </h3>
+                                                <button
+                                                    onClick={() => setGeneratedReport('')}
+                                                    className="text-gray-400 hover:text-gray-600"
+                                                    title="Effacer le rapport"
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
+                                                    {generatedReport}
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {taskSummary && (
+                                        <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                                    <i className="fas fa-list text-green-600 mr-2"></i>
+                                                    Résumé des tâches généré
+                                                </h3>
+                                                <button
+                                                    onClick={() => setTaskSummary('')}
+                                                    className="text-gray-400 hover:text-gray-600"
+                                                    title="Effacer le résumé"
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
+                                                    {taskSummary}
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
