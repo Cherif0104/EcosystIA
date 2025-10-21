@@ -5,6 +5,7 @@ import { Project, User, TimeLog } from '../types';
 import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';
 import TeamSelector from './common/TeamSelector';
+import ProjectDetailPage from './ProjectDetailPage';
 
 const statusStyles = {
     'Not Started': 'bg-gray-200 text-gray-800',
@@ -1503,6 +1504,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    const [isProjectDetailPageOpen, setIsProjectDetailPageOpen] = useState(false);
 
     const validateProject = (projectData: Project | Omit<Project, 'id' | 'tasks' | 'risks'>): string | null => {
         if (!projectData.title?.trim()) {
@@ -1684,7 +1686,10 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                                 
                                 <div className="flex justify-between items-center">
                                     <button
-                                        onClick={() => setSelectedProject(project)}
+                                        onClick={() => {
+                                            setSelectedProject(project);
+                                            setIsProjectDetailPageOpen(true);
+                                        }}
                                         disabled={isLoading}
                                         className="text-blue-600 hover:text-blue-800 font-medium text-sm disabled:text-gray-400 disabled:cursor-not-allowed"
                                     >
@@ -1743,10 +1748,13 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                 />
             )}
 
-            {selectedProject && (
-                <ProjectDetailModal
+            {isProjectDetailPageOpen && selectedProject && (
+                <ProjectDetailPage
                     project={selectedProject}
-                    onClose={() => setSelectedProject(null)}
+                    onClose={() => {
+                        setIsProjectDetailPageOpen(false);
+                        setSelectedProject(null);
+                    }}
                     onUpdateProject={onUpdateProject}
                     onDeleteProject={onDeleteProject}
                     onAddTimeLog={onAddTimeLog}
