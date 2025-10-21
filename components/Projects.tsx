@@ -1695,7 +1695,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                             </div>
                         ))}
                     </div>
-                </>
+                </div>
             )}
 
             {filteredProjects.length > 0 ? (
