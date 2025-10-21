@@ -596,18 +596,19 @@ export class DataService {
         .insert({
           title: objective.title || '',
           description: objective.description,
-          quarter: objective.quarter || '',
+          quarter: objective.quarter || 'Q4',
           year: objective.year || new Date().getFullYear(),
-          owner_id: objective.ownerId || '',
+          owner_id: objective.ownerId || crypto.randomUUID(),
           status: objective.status || 'active',
           progress: objective.progress || 0,
           priority: objective.priority || 'Medium',
           start_date: objective.startDate,
           end_date: objective.endDate,
           category: objective.category,
-          owner_name: objective.ownerName,
+          owner_name: objective.ownerName || 'Utilisateur',
           team_members: objective.teamMembers || [],
           key_results: objective.keyResults || [],
+          project_id: objective.projectId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

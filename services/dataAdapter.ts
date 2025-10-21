@@ -544,7 +544,8 @@ export class DataAdapter {
           category: objective.category,
           ownerName: objective.ownerName,
           teamMembers: objective.teamMembers || [],
-          keyResults: objective.keyResults || []
+          keyResults: objective.keyResults || [],
+          projectId: objective.projectId
         };
         
         const { data, error } = await DataService.createObjective(objectiveData);
