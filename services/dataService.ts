@@ -761,6 +761,60 @@ export class DataService {
       return { error };
     }
   }
+
+  // Gestion des rapports de projet
+  static async createProjectReport(reportData: any) {
+    try {
+      const { data, error } = await supabase
+        .from('project_reports')
+        .insert({
+          project_id: reportData.projectId,
+          title: reportData.title,
+          content: reportData.content,
+          type: reportData.type,
+          created_by: reportData.createdBy
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Erreur création rapport:', error);
+      return { data: null, error };
+    }
+  }
+
+  static async getProjectReports(projectId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('project_reports')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Erreur récupération rapports:', error);
+      return { data: [], error };
+    }
+  }
+
+  static async deleteProjectReport(reportId: string) {
+    try {
+      const { error } = await supabase
+        .from('project_reports')
+        .delete()
+        .eq('id', reportId);
+      
+      if (error) throw error;
+      return { error: null };
+    } catch (error) {
+      console.error('Erreur suppression rapport:', error);
+      return { error };
+    }
+  }
 }
 
 export default DataService;

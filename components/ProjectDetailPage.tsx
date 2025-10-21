@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContextSupabase';
 import { Project, TimeLog } from '../types';
 import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';
+import DataAdapter from '../services/dataAdapter';
+import jsPDF from 'jspdf';
 
 interface ProjectDetailPageProps {
     project: Project;
@@ -45,7 +47,34 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
 
     useEffect(() => {
         setCurrentProject(project);
+        loadProjectReports();
     }, [project]);
+
+    const loadProjectReports = async () => {
+        try {
+            const reports = await DataAdapter.getProjectReports(project.id);
+            const statusReports = reports.filter(r => r.type === 'status_report');
+            const taskSummaries = reports.filter(r => r.type === 'task_summary');
+            
+            setSavedReports(statusReports.map(r => ({
+                id: r.id,
+                title: r.title,
+                content: r.content,
+                createdAt: new Date(r.created_at).toLocaleString('fr-FR'),
+                type: r.type
+            })));
+            
+            setSavedTaskSummaries(taskSummaries.map(r => ({
+                id: r.id,
+                title: r.title,
+                content: r.content,
+                createdAt: new Date(r.created_at).toLocaleString('fr-FR'),
+                type: r.type
+            })));
+        } catch (error) {
+            console.error('Erreur lors du chargement des rapports:', error);
+        }
+    };
 
     const handleSaveTimeLog = (log: Omit<TimeLog, 'id' | 'userId'>) => {
         onAddTimeLog(log);
@@ -376,51 +405,126 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
     };
 
     // Fonctions pour la gestion des rapports
-    const handleSaveReport = () => {
-        if (generatedReport) {
-            const newReport = {
-                id: `report-${Date.now()}`,
-                title: `Rapport d'état - ${new Date().toLocaleDateString('fr-FR')}`,
-                content: generatedReport,
-                createdAt: new Date().toLocaleString('fr-FR'),
-                type: 'status_report'
-            };
-            setSavedReports(prev => [newReport, ...prev]);
-            setGeneratedReport('');
+    const handleSaveReport = async () => {
+        if (generatedReport && currentUser) {
+            try {
+                const reportData = {
+                    projectId: currentProject.id,
+                    title: `Rapport d'état - ${new Date().toLocaleDateString('fr-FR')}`,
+                    content: generatedReport,
+                    type: 'status_report',
+                    createdBy: currentUser.email
+                };
+                
+                await DataAdapter.createProjectReport(reportData);
+                setGeneratedReport('');
+                await loadProjectReports(); // Recharger les rapports depuis la DB
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde du rapport:', error);
+                alert('Erreur lors de la sauvegarde du rapport');
+            }
         }
     };
 
-    const handleSaveTaskSummary = () => {
-        if (taskSummary) {
-            const newSummary = {
-                id: `summary-${Date.now()}`,
-                title: `Résumé des tâches - ${new Date().toLocaleDateString('fr-FR')}`,
-                content: taskSummary,
-                createdAt: new Date().toLocaleString('fr-FR'),
-                type: 'task_summary'
-            };
-            setSavedTaskSummaries(prev => [newSummary, ...prev]);
-            setTaskSummary('');
+    const handleSaveTaskSummary = async () => {
+        if (taskSummary && currentUser) {
+            try {
+                const summaryData = {
+                    projectId: currentProject.id,
+                    title: `Résumé des tâches - ${new Date().toLocaleDateString('fr-FR')}`,
+                    content: taskSummary,
+                    type: 'task_summary',
+                    createdBy: currentUser.email
+                };
+                
+                await DataAdapter.createProjectReport(summaryData);
+                setTaskSummary('');
+                await loadProjectReports(); // Recharger les rapports depuis la DB
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde du résumé:', error);
+                alert('Erreur lors de la sauvegarde du résumé');
+            }
         }
     };
 
-    const handleDeleteReport = (reportId: string) => {
-        setSavedReports(prev => prev.filter(report => report.id !== reportId));
+    const handleDeleteReport = async (reportId: string) => {
+        try {
+            await DataAdapter.deleteProjectReport(reportId);
+            await loadProjectReports(); // Recharger les rapports depuis la DB
+        } catch (error) {
+            console.error('Erreur lors de la suppression du rapport:', error);
+            alert('Erreur lors de la suppression du rapport');
+        }
     };
 
-    const handleDeleteTaskSummary = (summaryId: string) => {
-        setSavedTaskSummaries(prev => prev.filter(summary => summary.id !== summaryId));
+    const handleDeleteTaskSummary = async (summaryId: string) => {
+        try {
+            await DataAdapter.deleteProjectReport(summaryId);
+            await loadProjectReports(); // Recharger les rapports depuis la DB
+        } catch (error) {
+            console.error('Erreur lors de la suppression du résumé:', error);
+            alert('Erreur lors de la suppression du résumé');
+        }
     };
 
     const handleExportToPDF = (content: string, title: string) => {
-        // Simulation d'export PDF - dans une vraie app, vous utiliseriez une librairie comme jsPDF
-        const element = document.createElement('a');
-        const file = new Blob([content], {type: 'text/plain'});
-        element.href = URL.createObjectURL(file);
-        element.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
+        try {
+            // Créer un nouveau document PDF
+            const doc = new jsPDF();
+            
+            // Configuration de la page
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 20;
+            const maxWidth = pageWidth - (margin * 2);
+            const lineHeight = 7;
+            
+            // En-tête du document
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'bold');
+            doc.text(title, margin, margin + 10);
+            
+            // Ligne de séparation
+            doc.setLineWidth(0.5);
+            doc.line(margin, margin + 15, pageWidth - margin, margin + 15);
+            
+            // Informations du projet
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Projet: ${currentProject.title}`, margin, margin + 25);
+            doc.text(`Date de génération: ${new Date().toLocaleDateString('fr-FR')}`, margin, margin + 35);
+            
+            // Ligne de séparation
+            doc.line(margin, margin + 40, pageWidth - margin, margin + 40);
+            
+            // Contenu du rapport
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            
+            // Diviser le contenu en lignes
+            const lines = doc.splitTextToSize(content, maxWidth);
+            let yPosition = margin + 50;
+            
+            // Ajouter chaque ligne
+            lines.forEach((line: string) => {
+                // Vérifier si on a besoin d'une nouvelle page
+                if (yPosition + lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                
+                doc.text(line, margin, yPosition);
+                yPosition += lineHeight;
+            });
+            
+            // Sauvegarder le PDF
+            const fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${currentProject.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+            doc.save(fileName);
+            
+        } catch (error) {
+            console.error('Erreur lors de l\'export PDF:', error);
+            alert('Erreur lors de l\'export PDF');
+        }
     };
 
     return (
