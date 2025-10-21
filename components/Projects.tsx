@@ -7,6 +7,7 @@ import ConfirmationModal from './common/ConfirmationModal';
 import TeamSelector from './common/TeamSelector';
 import ProjectDetailPage from './ProjectDetailPage';
 import ProjectCreatePage from './ProjectCreatePage';
+import TeamWorkloadMetrics from './TeamWorkloadMetrics';
 
 const statusStyles = {
     'Not Started': 'bg-gray-200 text-gray-800',
@@ -1556,47 +1557,6 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
         });
     }, [projects]);
 
-    // Fonction pour calculer le résumé de charge de travail de l'équipe
-    const getTeamWorkloadSummary = () => {
-        const userWorkload: { [key: string]: any } = {};
-
-        // Initialiser pour chaque utilisateur
-        users.forEach(user => {
-            userWorkload[user.id] = {
-                user: user,
-                projects: 0,
-                activeProjects: 0,
-                estimatedHours: 0,
-                loggedHours: 0
-            };
-        });
-
-        // Calculer les métriques pour chaque projet
-        projects.forEach(project => {
-            project.team.forEach(member => {
-                if (userWorkload[member.id]) {
-                    userWorkload[member.id].projects += 1;
-                    if (project.status === 'In Progress') {
-                        userWorkload[member.id].activeProjects += 1;
-                    }
-                }
-            });
-
-            // Calculer les heures estimées et enregistrées
-            (project.tasks || []).forEach(task => {
-                if (task.assignee) {
-                    if (userWorkload[task.assignee.id]) {
-                        userWorkload[task.assignee.id].estimatedHours += task.estimatedHours || 0;
-                        userWorkload[task.assignee.id].loggedHours += task.loggedHours || 0;
-                    }
-                }
-            });
-        });
-
-        // Retourner seulement les utilisateurs qui ont des projets
-        return Object.values(userWorkload).filter(workload => workload.projects > 0);
-    };
-
     const canManage = useMemo(() => {
         return currentUser?.role === 'manager' || 
                currentUser?.role === 'administrator' || 
@@ -1662,39 +1622,10 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                 )}
             </div>
 
-            {/* Section Charge de travail de l'équipe */}
-            {teamWorkload.length > 0 && (
+            {/* Section Team Workload Metrics - Style Power BI */}
+            {projects.length > 0 && (
                 <div className="mb-8">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('team_workload')}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {teamWorkload.map(member => (
-                            <div key={member.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
-                                <div className="flex items-center space-x-3 mb-3">
-                                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                        {member.fullName?.charAt(0) || member.email?.charAt(0) || '?'}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-gray-800">{member.fullName || member.email}</h3>
-                                        <p className="text-sm text-gray-500">{t(member.role)}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">{t('projects')}</span>
-                                        <span className="font-medium">{member.totalProjects} {t('projects')}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">{t('active_projects')}</span>
-                                        <span className="font-medium">{member.projectCount} {t('active')}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">{t('estimated_hours')}</span>
-                                        <span className="font-medium text-blue-600">{member.estimatedHours}h</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <TeamWorkloadMetrics projects={projects} users={users} />
                 </div>
             )}
 
