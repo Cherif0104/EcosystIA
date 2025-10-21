@@ -370,16 +370,14 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                     <i className="fas fa-bullseye text-emerald-500 mr-3"></i>
                                     {t('objective')}: {obj.title}
                                 </h3>
-                                {canManage && (
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
-                                        <button onClick={() => handleEdit(obj)} className="text-blue-600 hover:text-blue-800">
-                                            <i className="fas fa-edit"></i>
-                                        </button>
-                                        <button onClick={() => handleDelete(obj)} className="text-red-600 hover:text-red-800">
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="space-x-2">
+                                    <button onClick={() => handleEdit(obj)} className="text-blue-600 hover:text-blue-800 p-1" title="Éditer l'objectif">
+                                        <i className="fas fa-edit"></i>
+                                    </button>
+                                    <button onClick={() => handleDelete(obj)} className="text-red-600 hover:text-red-800 p-1" title="Supprimer l'objectif">
+                                        <i className="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div className="mt-4 pl-8 space-y-3">
                                 {obj.keyResults.map(kr => {
@@ -388,15 +386,13 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                         <div key={kr.id} className="group">
                                             <div className="flex justify-between items-start">
                                                 <p className="font-semibold text-gray-700 flex-1">{kr.title}</p>
-                                                {canManage && (
-                                                    <button 
-                                                        onClick={() => handleDeleteKeyResult(obj.id, kr.id)}
-                                                        className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 ml-2"
-                                                        title="Supprimer ce Key Result"
-                                                    >
-                                                        <i className="fas fa-times"></i>
-                                                    </button>
-                                                )}
+                                                <button 
+                                                    onClick={() => handleDeleteKeyResult(obj.id, kr.id)}
+                                                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 ml-2"
+                                                    title="Supprimer ce Key Result"
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
                                             </div>
                                             <div className="flex items-center space-x-4">
                                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -418,15 +414,13 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                 })}
                                 
                                 {/* Bouton pour ajouter un nouveau Key Result */}
-                                {canManage && (
-                                    <button
-                                        onClick={() => handleAddKeyResult(obj.id)}
-                                        className="mt-3 text-emerald-600 hover:text-emerald-800 text-sm font-medium flex items-center"
-                                    >
-                                        <i className="fas fa-plus mr-2"></i>
-                                        Ajouter un Key Result
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => handleAddKeyResult(obj.id)}
+                                    className="mt-3 text-emerald-600 hover:text-emerald-800 text-sm font-medium flex items-center"
+                                >
+                                    <i className="fas fa-plus mr-2"></i>
+                                    Ajouter un Key Result
+                                </button>
                             </div>
                         </div>
                     ))}
