@@ -575,13 +575,6 @@ export class DataService {
 
   // ===== OBJECTIVES =====
   static async getObjectives() {
-    return await ApiHelper.get('objectives', { 
-      select: '*', 
-      order: 'created_at.desc' 
-    });
-  }
-
-  static async getObjectives() {
     try {
       const { data, error } = await supabase
         .from('objectives')
