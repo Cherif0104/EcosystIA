@@ -1699,46 +1699,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
             )}
 
             {filteredProjects.length > 0 ? (
-                <>
-                    {/* Section Team Workload */}
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Team Workload</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {getTeamWorkloadSummary().map((workload, index) => (
-                                <div key={index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                                    <div className="flex items-center space-x-4 mb-4">
-                                        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                            {(workload.user.fullName || workload.user.email || 'U').charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900">{workload.user.fullName || workload.user.email}</h3>
-                                            <p className="text-sm text-gray-600">{workload.user.role}</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-gray-600">Projects</span>
-                                            <span className="font-semibold text-gray-900">{workload.projects} Projects</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-gray-600">active_projects</span>
-                                            <span className="font-semibold text-gray-900">{workload.activeProjects} active</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-gray-600">estimated_hours</span>
-                                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-semibold">
-                                                {workload.estimatedHours}h
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Section Projets */}
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Projets</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredProjects.map(project => (
                         <div key={project.id} className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
                             <div className="p-6">
