@@ -106,6 +106,9 @@ const ProjectDetailModal: React.FC<{
     const [isLogTimeModalOpen, setLogTimeModalOpen] = useState(false);
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [pendingTasks, setPendingTasks] = useState<any[]>([]);
+    const [pendingRisks, setPendingRisks] = useState<any[]>([]);
+    const [hasPendingChanges, setHasPendingChanges] = useState(false);
 
     // États pour la gestion des tâches
     const [newTaskText, setNewTaskText] = useState('');
@@ -245,15 +248,32 @@ const ProjectDetailModal: React.FC<{
                 }
             ];
 
+            // Stocker les risques générés temporairement
+            setPendingRisks(aiRisks);
+            setHasPendingChanges(true);
+            setIsLoading(false);
+        }, 2500);
+    };
+
+    const handleSavePendingRisks = async () => {
+        if (pendingRisks.length > 0) {
             const updatedProject = {
                 ...currentProject,
-                risks: [...(currentProject.risks || []), ...aiRisks]
+                risks: [...(currentProject.risks || []), ...pendingRisks]
             };
             
             setCurrentProject(updatedProject);
-            onUpdateProject(updatedProject);
-            setIsLoading(false);
-        }, 2500);
+            await onUpdateProject(updatedProject);
+            
+            // Nettoyer les données temporaires
+            setPendingRisks([]);
+            setHasPendingChanges(false);
+        }
+    };
+
+    const handleCancelPendingRisks = () => {
+        setPendingRisks([]);
+        setHasPendingChanges(false);
     };
 
     const handleSummarizeTasks = async () => {
@@ -460,10 +480,32 @@ const ProjectDetailModal: React.FC<{
                 tasks: [...(currentProject.tasks || []), ...aiTasks]
             };
             
-            setCurrentProject(updatedProject);
-            onUpdateProject(updatedProject);
+            // Stocker les tâches générées temporairement
+            setPendingTasks(aiTasks);
+            setHasPendingChanges(true);
             setIsLoading(false);
         }, 2000);
+    };
+
+    const handleSavePendingTasks = async () => {
+        if (pendingTasks.length > 0) {
+            const updatedProject = {
+                ...currentProject,
+                tasks: [...(currentProject.tasks || []), ...pendingTasks]
+            };
+            
+            setCurrentProject(updatedProject);
+            await onUpdateProject(updatedProject);
+            
+            // Nettoyer les données temporaires
+            setPendingTasks([]);
+            setHasPendingChanges(false);
+        }
+    };
+
+    const handleCancelPendingTasks = () => {
+        setPendingTasks([]);
+        setHasPendingChanges(false);
     };
 
     return (
@@ -697,6 +739,7 @@ const ProjectDetailModal: React.FC<{
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
+                                                    {/* Afficher les tâches existantes */}
                                                     {(currentProject.tasks || []).map(task => {
                                                         const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed';
                                                         return (
@@ -713,13 +756,13 @@ const ProjectDetailModal: React.FC<{
                                                             </td>
                                                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                                     <div className="flex items-center">
-                                                                        <input
-                                                                            type="text"
+                                                    <input
+                                                        type="text"
                                                                             value={task.text}
                                                                             onChange={(e) => handleUpdateTask(task.id, { text: e.target.value })}
                                                                             className="w-full max-w-xs text-sm border border-gray-300 rounded px-2 py-1"
-                                                                        />
-                                                                    </div>
+                                                    />
+                                                </div>
                                                             </td>
                                                             <td className="px-4 py-4 whitespace-nowrap">
                                                                     <div className="flex items-center space-x-2">
@@ -742,14 +785,14 @@ const ProjectDetailModal: React.FC<{
                                                             </td>
                                                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                     <div className="flex items-center">
-                                                                        <input
-                                                                            type="date"
+                                                    <input
+                                                        type="date"
                                                                             value={task.dueDate || ''}
                                                                             onChange={(e) => handleUpdateTask(task.id, { dueDate: e.target.value || undefined })}
                                                                             className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
                                                                         />
                                                                         <i className="fas fa-calendar text-gray-400 ml-1"></i>
-                                                                    </div>
+                                                </div>
                                                             </td>
                                                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                     <input
@@ -768,14 +811,14 @@ const ProjectDetailModal: React.FC<{
                                                                     />
                                                                 </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap">
-                                                                    <select
+                                                    <select
                                                                         value={task.priority}
                                                                         onChange={(e) => handleUpdateTask(task.id, { priority: e.target.value as 'Low' | 'Medium' | 'High' })}
                                                                         className="text-xs border border-gray-300 rounded px-2 py-1"
-                                                                    >
-                                                                        <option value="Low">Faible</option>
-                                                                        <option value="Medium">Moyen</option>
-                                                                        <option value="High">Haut</option>
+                                                    >
+                                                        <option value="Low">Faible</option>
+                                                        <option value="Medium">Moyen</option>
+                                                        <option value="High">Haut</option>
                                                                     </select>
                                                                 </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -795,19 +838,166 @@ const ProjectDetailModal: React.FC<{
                                                                                     {member.fullName || member.email}
                                                                                 </option>
                                                                             ))}
-                                                                        </select>
-                                                                    </div>
+                                                    </select>
+                                                </div>
                                                                 </td>
                                                             </tr>
                                                         );
                                                     })}
+                                                    
+                                                    {/* Afficher les tâches temporaires générées par l'IA */}
+                                                    {pendingTasks.map(task => {
+                                                        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed';
+                                                        return (
+                                                        <tr key={task.id} className="hover:bg-gray-50 bg-yellow-50 border-l-4 border-yellow-400">
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <input
+                                                                    type="text"
+                                                                    value={task.text}
+                                                                    onChange={(e) => {
+                                                                        const updatedTasks = pendingTasks.map(t => 
+                                                                            t.id === task.id ? { ...t, text: e.target.value } : t
+                                                                        );
+                                                                        setPendingTasks(updatedTasks);
+                                                                    }}
+                                                                    className="w-full border-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <select
+                                                                    value={task.status}
+                                                                    onChange={(e) => {
+                                                                        const updatedTasks = pendingTasks.map(t => 
+                                                                            t.id === task.id ? { ...t, status: e.target.value } : t
+                                                                        );
+                                                                        setPendingTasks(updatedTasks);
+                                                                    }}
+                                                                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                                                                >
+                                                                    <option value="To Do">À faire</option>
+                                                                    <option value="In Progress">En cours</option>
+                                                                    <option value="Completed">Terminé</option>
+                                                                </select>
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <input
+                                                                    type="date"
+                                                                    value={task.dueDate || ''}
+                                                                    onChange={(e) => {
+                                                                        const updatedTasks = pendingTasks.map(t => 
+                                                                            t.id === task.id ? { ...t, dueDate: e.target.value } : t
+                                                                        );
+                                                                        setPendingTasks(updatedTasks);
+                                                                    }}
+                                                                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                                                                />
+                                                                {isOverdue && <span className="ml-2 text-xs text-red-600">En retard</span>}
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <input
+                                                                    type="number"
+                                                                    value={task.estimatedHours || 0}
+                                                                    onChange={(e) => {
+                                                                        const updatedTasks = pendingTasks.map(t => 
+                                                                            t.id === task.id ? { ...t, estimatedHours: Number(e.target.value) } : t
+                                                                        );
+                                                                        setPendingTasks(updatedTasks);
+                                                                    }}
+                                                                    className="w-16 text-xs border border-gray-300 rounded px-2 py-1"
+                                                                    min="0"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <input
+                                                                    type="number"
+                                                                    value={task.loggedHours || 0}
+                                                                    onChange={(e) => {
+                                                                        const updatedTasks = pendingTasks.map(t => 
+                                                                            t.id === task.id ? { ...t, loggedHours: Number(e.target.value) } : t
+                                                                        );
+                                                                        setPendingTasks(updatedTasks);
+                                                                    }}
+                                                                    className="w-16 text-xs border border-gray-300 rounded px-2 py-1"
+                                                                    min="0"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <select
+                                                                    value={task.priority}
+                                                                    onChange={(e) => {
+                                                                        const updatedTasks = pendingTasks.map(t => 
+                                                                            t.id === task.id ? { ...t, priority: e.target.value } : t
+                                                                        );
+                                                                        setPendingTasks(updatedTasks);
+                                                                    }}
+                                                                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                                                                >
+                                                                    <option value="Low">Faible</option>
+                                                                    <option value="Medium">Moyen</option>
+                                                                    <option value="High">Haut</option>
+                                                                </select>
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                <div className="flex items-center">
+                                                                    <select
+                                                                        value={task.assignee?.id || ''}
+                                                                        onChange={(e) => {
+                                                                            const assigneeId = e.target.value;
+                                                                            const assignee = assigneeId ? currentProject.team.find(m => m.id === assigneeId) : undefined;
+                                                                            const updatedTasks = pendingTasks.map(t => 
+                                                                                t.id === task.id ? { ...t, assignee } : t
+                                                                            );
+                                                                            setPendingTasks(updatedTasks);
+                                                                        }}
+                                                                        className="text-xs border border-gray-300 rounded px-2 py-1 min-w-24"
+                                                >
+                                                    <option value="">Non attribué</option>
+                                                    {currentProject.team.map(member => (
+                                                        <option key={member.id} value={member.id}>
+                                                            {member.fullName || member.email}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                                            </td>
+                                                        </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
+                                            
+                                            {/* Boutons CTA pour les tâches temporaires */}
+                                            {pendingTasks.length > 0 && (
+                                                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center">
+                                                            <i className="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+                                                            <span className="text-sm text-yellow-800">
+                                                                {pendingTasks.length} tâche(s) générée(s) par l'IA en attente de sauvegarde
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex space-x-2">
+                                            <button
+                                                                onClick={handleCancelPendingTasks}
+                                                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                                            >
+                                                                Annuler
+                                                            </button>
+                                                            <button
+                                                                onClick={handleSavePendingTasks}
+                                                                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
+                                                            >
+                                                                Sauvegarder
+                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            )}
-                            
+                                        </div>
+                                    )}
+                                    
                             {activeTab === 'risks' && (
                                 <div className="space-y-6">
                                     {/* Risks Table */}
@@ -843,14 +1033,14 @@ const ProjectDetailModal: React.FC<{
                                                             <tr key={risk.id} className="hover:bg-gray-50">
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                                     <div className="flex items-center">
-                                                                        <input
+                                                                <input
                                                                             type="text"
                                                                             value={risk.description}
                                                                             onChange={(e) => handleUpdateRisk(risk.id, { description: e.target.value })}
                                                                             className="w-full max-w-xs text-sm border border-gray-300 rounded px-2 py-1"
                                                                         />
                                                                     </div>
-                                                                </td>
+                                                            </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                                     <select
                                                                         value={risk.likelihood}
@@ -906,7 +1096,99 @@ const ProjectDetailModal: React.FC<{
                                                         </tr>
                                                         );
                                                     })}
-                                                    {(!currentProject.risks || currentProject.risks.length === 0) && (
+                                                    
+                                                    {/* Afficher les risques temporaires générés par l'IA */}
+                                                    {pendingRisks.map(risk => {
+                                                        const riskLevel = getRiskLevel(risk.likelihood, risk.impact);
+                                                        return (
+                                                        <tr key={risk.id} className="hover:bg-gray-50 bg-yellow-50 border-l-4 border-yellow-400">
+                                                            <td className="px-4 py-4">
+                                                                <textarea
+                                                                    value={risk.description}
+                                                                    onChange={(e) => {
+                                                                        const updatedRisks = pendingRisks.map(r => 
+                                                                            r.id === risk.id ? { ...r, description: e.target.value } : r
+                                                                        );
+                                                                        setPendingRisks(updatedRisks);
+                                                                    }}
+                                                                    className="w-full text-sm border border-gray-300 rounded px-2 py-1 resize-none"
+                                                                    rows={2}
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <select
+                                                                    value={risk.likelihood}
+                                                                    onChange={(e) => {
+                                                                        const updatedRisks = pendingRisks.map(r => 
+                                                                            r.id === risk.id ? { ...r, likelihood: e.target.value } : r
+                                                                        );
+                                                                        setPendingRisks(updatedRisks);
+                                                                    }}
+                                                                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                                                                >
+                                                                    <option value="Low">Faible</option>
+                                                                    <option value="Medium">Moyenne</option>
+                                                                    <option value="High">Élevée</option>
+                                                                </select>
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <select
+                                                                    value={risk.impact}
+                                                                    onChange={(e) => {
+                                                                        const updatedRisks = pendingRisks.map(r => 
+                                                                            r.id === risk.id ? { ...r, impact: e.target.value } : r
+                                                                        );
+                                                                        setPendingRisks(updatedRisks);
+                                                                    }}
+                                                                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                                                                >
+                                                                    <option value="Low">Faible</option>
+                                                                    <option value="Medium">Moyen</option>
+                                                                    <option value="High">Élevé</option>
+                                                                </select>
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                    riskLevel === 'High' ? 'bg-red-100 text-red-800' :
+                                                                    riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                                    'bg-green-100 text-green-800'
+                                                                }`}>
+                                                                    {riskLevel === 'High' ? 'Élevé' :
+                                                                     riskLevel === 'Medium' ? 'Moyen' : 'Faible'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-sm text-gray-500">
+                                                                <div className="max-w-xs">
+                                                                    <textarea
+                                                                        value={risk.mitigationStrategy}
+                                                                        onChange={(e) => {
+                                                                            const updatedRisks = pendingRisks.map(r => 
+                                                                                r.id === risk.id ? { ...r, mitigationStrategy: e.target.value } : r
+                                                                            );
+                                                                            setPendingRisks(updatedRisks);
+                                                                        }}
+                                                                        className="w-full text-sm border border-gray-300 rounded px-2 py-1 resize-none"
+                                                                        rows={2}
+                                                                    />
+                                                                        </div>
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                    <button
+                                                                    onClick={() => {
+                                                                        const updatedRisks = pendingRisks.filter(r => r.id !== risk.id);
+                                                                        setPendingRisks(updatedRisks);
+                                                                    }}
+                                                                        className="text-red-600 hover:text-red-800"
+                                                                    title="Supprimer ce risque temporaire"
+                                                                    >
+                                                                    <i className="fas fa-times"></i>
+                                                                    </button>
+                                                            </td>
+                                                        </tr>
+                                                        );
+                                                    })}
+                                                    
+                                                    {(!currentProject.risks || currentProject.risks.length === 0) && pendingRisks.length === 0 && (
                                                         <tr>
                                                             <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                                                                 <i className="fas fa-exclamation-triangle text-4xl text-gray-300 mb-4"></i>
@@ -917,6 +1199,34 @@ const ProjectDetailModal: React.FC<{
                                                     )}
                                                 </tbody>
                                             </table>
+                                            
+                                            {/* Boutons CTA pour les risques temporaires */}
+                                            {pendingRisks.length > 0 && (
+                                                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center">
+                                                            <i className="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+                                                            <span className="text-sm text-yellow-800">
+                                                                {pendingRisks.length} risque(s) généré(s) par l'IA en attente de sauvegarde
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={handleCancelPendingRisks}
+                                                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                                            >
+                                                                Annuler
+                                                            </button>
+                                                            <button
+                                                                onClick={handleSavePendingRisks}
+                                                                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
+                                                            >
+                                                                Sauvegarder
+                                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                                         </div>
                                     </div>
                                 </div>
