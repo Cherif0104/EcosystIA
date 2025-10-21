@@ -221,25 +221,101 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
         setDeletingObjective(objective);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if(deletingObjective) {
-            onDeleteObjective(deletingObjective.id);
-            setDeletingObjective(null);
+            try {
+                await onDeleteObjective(deletingObjective.id);
+                setDeletingObjective(null);
+            } catch (error) {
+                console.error('Erreur suppression objectif:', error);
+                alert('Erreur lors de la suppression de l\'objectif');
+            }
         }
     };
 
-    const handleUpdateCurrentValue = (objectiveId: string, krId: string, newValue: number) => {
-        const objective = objectives.find(o => o.id === objectiveId);
+    // Fonction pour mettre à jour la progression d'un Key Result
+    const handleUpdateKeyResult = async (objectiveId: string, keyResultId: string, updates: { current?: number; target?: number; unit?: string }) => {
+        const objective = objectives.find(obj => obj.id === objectiveId);
         if (!objective) return;
+
+        const updatedKeyResults = objective.keyResults.map(kr => 
+            kr.id === keyResultId ? { ...kr, ...updates } : kr
+        );
 
         const updatedObjective = {
             ...objective,
-            keyResults: objective.keyResults.map(kr => 
-                kr.id === krId ? { ...kr, current: newValue } : kr
-            )
+            keyResults: updatedKeyResults,
+            progress: calculateOverallProgress(updatedKeyResults)
         };
-        
-        onUpdateObjective(updatedObjective);
+
+        try {
+            await onUpdateObjective(updatedObjective);
+        } catch (error) {
+            console.error('Erreur mise à jour Key Result:', error);
+            alert('Erreur lors de la mise à jour');
+        }
+    };
+
+    // Fonction pour calculer la progression globale
+    const calculateOverallProgress = (keyResults: any[]) => {
+        if (keyResults.length === 0) return 0;
+        const totalProgress = keyResults.reduce((sum, kr) => {
+            if (kr.target === 0) return sum;
+            return sum + (kr.current / kr.target);
+        }, 0);
+        return Math.min(totalProgress / keyResults.length, 1);
+    };
+
+    const handleUpdateCurrentValue = async (objectiveId: string, krId: string, newValue: number) => {
+        await handleUpdateKeyResult(objectiveId, krId, { current: newValue });
+    };
+
+    // Fonction pour ajouter un nouveau Key Result
+    const handleAddKeyResult = async (objectiveId: string) => {
+        const objective = objectives.find(obj => obj.id === objectiveId);
+        if (!objective) return;
+
+        const newKeyResult = {
+            id: `kr-${Date.now()}`,
+            title: 'Nouveau Key Result',
+            current: 0,
+            target: 100,
+            unit: '%'
+        };
+
+        const updatedKeyResults = [...objective.keyResults, newKeyResult];
+        const updatedObjective = {
+            ...objective,
+            keyResults: updatedKeyResults,
+            progress: calculateOverallProgress(updatedKeyResults)
+        };
+
+        try {
+            await onUpdateObjective(updatedObjective);
+        } catch (error) {
+            console.error('Erreur ajout Key Result:', error);
+            alert('Erreur lors de l\'ajout du Key Result');
+        }
+    };
+
+    // Fonction pour supprimer un Key Result
+    const handleDeleteKeyResult = async (objectiveId: string, krId: string) => {
+        const objective = objectives.find(obj => obj.id === objectiveId);
+        if (!objective) return;
+
+        const updatedKeyResults = objective.keyResults.filter(kr => kr.id !== krId);
+        const updatedObjective = {
+            ...objective,
+            keyResults: updatedKeyResults,
+            progress: calculateOverallProgress(updatedKeyResults)
+        };
+
+        try {
+            await onUpdateObjective(updatedObjective);
+        } catch (error) {
+            console.error('Erreur suppression Key Result:', error);
+            alert('Erreur lors de la suppression du Key Result');
+        }
     };
 
     const currentObjectives = objectives.filter(o => o.projectId === selectedProjectId);
@@ -309,8 +385,19 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                 {obj.keyResults.map(kr => {
                                     const progress = kr.target > 0 ? (kr.current / kr.target) * 100 : 0;
                                     return (
-                                        <div key={kr.id}>
-                                            <p className="font-semibold text-gray-700">{kr.title}</p>
+                                        <div key={kr.id} className="group">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-semibold text-gray-700 flex-1">{kr.title}</p>
+                                                {canManage && (
+                                                    <button 
+                                                        onClick={() => handleDeleteKeyResult(obj.id, kr.id)}
+                                                        className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 ml-2"
+                                                        title="Supprimer ce Key Result"
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                )}
+                                            </div>
                                             <div className="flex items-center space-x-4">
                                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                                                     <div className="bg-gradient-to-r from-emerald-400 to-teal-500 h-2.5 rounded-full" style={{ width: `${Math.min(progress, 100)}%` }}></div>
@@ -329,6 +416,17 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                         </div>
                                     )
                                 })}
+                                
+                                {/* Bouton pour ajouter un nouveau Key Result */}
+                                {canManage && (
+                                    <button
+                                        onClick={() => handleAddKeyResult(obj.id)}
+                                        className="mt-3 text-emerald-600 hover:text-emerald-800 text-sm font-medium flex items-center"
+                                    >
+                                        <i className="fas fa-plus mr-2"></i>
+                                        Ajouter un Key Result
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -365,10 +463,13 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
             )}
             {deletingObjective && (
                 <ConfirmationModal
-                    title={t('delete_objective')}
-                    message={t('confirm_delete_message')}
+                    title="Supprimer l'objectif"
+                    message={`Êtes-vous sûr de vouloir supprimer l'objectif "${deletingObjective.title}" ? Cette action est irréversible.`}
                     onConfirm={confirmDelete}
                     onCancel={() => setDeletingObjective(null)}
+                    confirmText="Supprimer"
+                    cancelText="Annuler"
+                    confirmButtonClass="bg-red-600 hover:bg-red-700"
                 />
             )}
             {isSuggestionModalOpen && (
