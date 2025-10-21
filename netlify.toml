@@ -4,6 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  VITE_SUPABASE_URL = "https://tdwbqgyubigaurnjzbfv.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkd2JxZ3l1YmlnYXVybmp6YmZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzY5NDQsImV4cCI6MjA1MDU1Mjk0NH0.9vHxJg8QyKzLmNpRqStUvWxYzAaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890"
 
 [[redirects]]
   from = "/*"
@@ -15,3 +17,21 @@
 
 [context.deploy-preview]
   environment = { NODE_ENV = "development" }
+
+# Configuration pour le déploiement automatique
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Optimisations de performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
