@@ -111,6 +111,8 @@ const ProjectDetailModal: React.FC<{
     const [hasPendingChanges, setHasPendingChanges] = useState(false);
     const [generatedReport, setGeneratedReport] = useState<string>('');
     const [taskSummary, setTaskSummary] = useState<string>('');
+    const [savedReports, setSavedReports] = useState<any[]>([]);
+    const [savedTaskSummaries, setSavedTaskSummaries] = useState<any[]>([]);
 
     // États pour la gestion des tâches
     const [newTaskText, setNewTaskText] = useState('');
@@ -512,6 +514,54 @@ const ProjectDetailModal: React.FC<{
         setHasPendingChanges(false);
     };
 
+    // Fonctions pour la gestion des rapports
+    const handleSaveReport = () => {
+        if (generatedReport) {
+            const newReport = {
+                id: `report-${Date.now()}`,
+                title: `Rapport d'état - ${new Date().toLocaleDateString('fr-FR')}`,
+                content: generatedReport,
+                createdAt: new Date().toLocaleString('fr-FR'),
+                type: 'status_report'
+            };
+            setSavedReports(prev => [newReport, ...prev]);
+            setGeneratedReport('');
+        }
+    };
+
+    const handleSaveTaskSummary = () => {
+        if (taskSummary) {
+            const newSummary = {
+                id: `summary-${Date.now()}`,
+                title: `Résumé des tâches - ${new Date().toLocaleDateString('fr-FR')}`,
+                content: taskSummary,
+                createdAt: new Date().toLocaleString('fr-FR'),
+                type: 'task_summary'
+            };
+            setSavedTaskSummaries(prev => [newSummary, ...prev]);
+            setTaskSummary('');
+        }
+    };
+
+    const handleDeleteReport = (reportId: string) => {
+        setSavedReports(prev => prev.filter(report => report.id !== reportId));
+    };
+
+    const handleDeleteTaskSummary = (summaryId: string) => {
+        setSavedTaskSummaries(prev => prev.filter(summary => summary.id !== summaryId));
+    };
+
+    const handleExportToPDF = (content: string, title: string) => {
+        // Simulation d'export PDF - dans une vraie app, vous utiliseriez une librairie comme jsPDF
+        const element = document.createElement('a');
+        const file = new Blob([content], {type: 'text/plain'});
+        element.href = URL.createObjectURL(file);
+        element.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
@@ -762,9 +812,10 @@ const ProjectDetailModal: React.FC<{
                                                                     <div className="flex items-center">
                                                     <input
                                                         type="text"
-                                                                            value={task.text}
-                                                                            onChange={(e) => handleUpdateTask(task.id, { text: e.target.value })}
-                                                                            className="w-full max-w-xs text-sm border border-gray-300 rounded px-2 py-1"
+                                                        value={task.text}
+                                                        onChange={(e) => handleUpdateTask(task.id, { text: e.target.value })}
+                                                        className="w-full min-w-64 text-sm border border-gray-300 rounded px-3 py-2"
+                                                        placeholder="Nom de la tâche"
                                                     />
                                                 </div>
                                                             </td>
@@ -864,7 +915,8 @@ const ProjectDetailModal: React.FC<{
                                                                         );
                                                                         setPendingTasks(updatedTasks);
                                                                     }}
-                                                                    className="w-full border-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                    className="w-full min-w-64 text-sm border border-gray-300 rounded px-3 py-2 bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                    placeholder="Nom de la tâche"
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-4 whitespace-nowrap">
@@ -1037,12 +1089,13 @@ const ProjectDetailModal: React.FC<{
                                                             <tr key={risk.id} className="hover:bg-gray-50">
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                                                     <div className="flex items-center">
-                                                                <input
-                                                                            type="text"
-                                                                            value={risk.description}
-                                                                            onChange={(e) => handleUpdateRisk(risk.id, { description: e.target.value })}
-                                                                            className="w-full max-w-xs text-sm border border-gray-300 rounded px-2 py-1"
-                                                                        />
+                                                                <textarea
+                                                                    value={risk.description}
+                                                                    onChange={(e) => handleUpdateRisk(risk.id, { description: e.target.value })}
+                                                                    className="w-full min-w-80 text-sm border border-gray-300 rounded px-3 py-2"
+                                                                    rows={2}
+                                                                    placeholder="Description du risque"
+                                                                />
                                                                     </div>
                                                             </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap">
@@ -1115,8 +1168,9 @@ const ProjectDetailModal: React.FC<{
                                                                         );
                                                                         setPendingRisks(updatedRisks);
                                                                     }}
-                                                                    className="w-full text-sm border border-gray-300 rounded px-2 py-1 resize-none"
+                                                                    className="w-full min-w-80 text-sm border border-gray-300 rounded px-3 py-2 resize-none"
                                                                     rows={2}
+                                                                    placeholder="Description du risque"
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-4 whitespace-nowrap">
@@ -1238,13 +1292,14 @@ const ProjectDetailModal: React.FC<{
                             
                             {activeTab === 'report' && (
                                 <div className="space-y-6">
-                                    {!generatedReport && !taskSummary && (
-                                        <div className="text-center py-8 text-gray-500">
+                                    {!generatedReport && !taskSummary && savedReports.length === 0 && savedTaskSummaries.length === 0 && (
+                                <div className="text-center py-8 text-gray-500">
                                             <i className="fas fa-file-alt text-6xl text-gray-300 mb-4"></i>
                                             <p className="text-lg">Générer un rapport d'état ou un résumé des tâches.</p>
-                                        </div>
-                                    )}
+                                </div>
+                            )}
                                     
+                                    {/* Rapport d'état généré */}
                                     {generatedReport && (
                                         <div className="bg-white border border-gray-200 rounded-lg p-6">
                                             <div className="flex items-center justify-between mb-4">
@@ -1252,13 +1307,29 @@ const ProjectDetailModal: React.FC<{
                                                     <i className="fas fa-file-alt text-blue-600 mr-2"></i>
                                                     Rapport d'état généré
                                                 </h3>
-                                                <button
-                                                    onClick={() => setGeneratedReport('')}
-                                                    className="text-gray-400 hover:text-gray-600"
-                                                    title="Effacer le rapport"
-                                                >
-                                                    <i className="fas fa-times"></i>
-                                                </button>
+                                                <div className="flex space-x-2">
+                                                    <button
+                                                        onClick={() => handleSaveReport()}
+                                                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                        title="Sauvegarder le rapport"
+                                                    >
+                                                        <i className="fas fa-save mr-1"></i>Sauvegarder
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExportToPDF(generatedReport, 'rapport_etat')}
+                                                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                                                        title="Exporter en PDF"
+                                                    >
+                                                        <i className="fas fa-file-pdf mr-1"></i>PDF
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setGeneratedReport('')}
+                                                        className="text-gray-400 hover:text-gray-600"
+                                                        title="Effacer le rapport"
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="bg-gray-50 p-4 rounded-lg">
                                                 <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
@@ -1268,6 +1339,7 @@ const ProjectDetailModal: React.FC<{
                                         </div>
                                     )}
                                     
+                                    {/* Résumé des tâches généré */}
                                     {taskSummary && (
                                         <div className="bg-white border border-gray-200 rounded-lg p-6">
                                             <div className="flex items-center justify-between mb-4">
@@ -1275,19 +1347,113 @@ const ProjectDetailModal: React.FC<{
                                                     <i className="fas fa-list text-green-600 mr-2"></i>
                                                     Résumé des tâches généré
                                                 </h3>
-                                                <button
-                                                    onClick={() => setTaskSummary('')}
-                                                    className="text-gray-400 hover:text-gray-600"
-                                                    title="Effacer le résumé"
-                                                >
-                                                    <i className="fas fa-times"></i>
-                                                </button>
+                                                <div className="flex space-x-2">
+                                                    <button
+                                                        onClick={() => handleSaveTaskSummary()}
+                                                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                        title="Sauvegarder le résumé"
+                                                    >
+                                                        <i className="fas fa-save mr-1"></i>Sauvegarder
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExportToPDF(taskSummary, 'resume_taches')}
+                                                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                                                        title="Exporter en PDF"
+                                                    >
+                                                        <i className="fas fa-file-pdf mr-1"></i>PDF
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setTaskSummary('')}
+                                                        className="text-gray-400 hover:text-gray-600"
+                                                        title="Effacer le résumé"
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="bg-gray-50 p-4 rounded-lg">
                                                 <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
                                                     {taskSummary}
                                                 </pre>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Rapports sauvegardés */}
+                                    {savedReports.length > 0 && (
+                                        <div className="space-y-3">
+                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                                <i className="fas fa-archive text-blue-600 mr-2"></i>
+                                                Rapports sauvegardés ({savedReports.length})
+                                            </h3>
+                                            {savedReports.map(report => (
+                                                <div key={report.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="font-medium text-gray-900">{report.title}</h4>
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={() => handleExportToPDF(report.content, report.title)}
+                                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                                                title="Exporter en PDF"
+                                                            >
+                                                                <i className="fas fa-file-pdf mr-1"></i>PDF
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteReport(report.id)}
+                                                                className="text-red-600 hover:text-red-800"
+                                                                title="Supprimer le rapport"
+                                                            >
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mb-2">Créé le: {report.createdAt}</p>
+                                                    <div className="bg-gray-50 p-3 rounded text-sm">
+                                                        <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">
+                                                            {report.content.substring(0, 200)}...
+                                                        </pre>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Résumés sauvegardés */}
+                                    {savedTaskSummaries.length > 0 && (
+                                        <div className="space-y-3">
+                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                                <i className="fas fa-archive text-green-600 mr-2"></i>
+                                                Résumés sauvegardés ({savedTaskSummaries.length})
+                                            </h3>
+                                            {savedTaskSummaries.map(summary => (
+                                                <div key={summary.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="font-medium text-gray-900">{summary.title}</h4>
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={() => handleExportToPDF(summary.content, summary.title)}
+                                                                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                                                title="Exporter en PDF"
+                                                            >
+                                                                <i className="fas fa-file-pdf mr-1"></i>PDF
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteTaskSummary(summary.id)}
+                                                                className="text-red-600 hover:text-red-800"
+                                                                title="Supprimer le résumé"
+                                                            >
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mb-2">Créé le: {summary.createdAt}</p>
+                                                    <div className="bg-gray-50 p-3 rounded text-sm">
+                                                        <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">
+                                                            {summary.content.substring(0, 200)}...
+                                                        </pre>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
