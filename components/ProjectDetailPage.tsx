@@ -87,6 +87,43 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
 
     const totalLoggedHours = projectTimeLogs.reduce((sum, log) => sum + log.hours, 0);
 
+    // Fonction pour calculer les métriques de charge de travail par rôle
+    const getTeamWorkloadMetrics = () => {
+        const roleMetrics: { [key: string]: any } = {};
+
+        // Initialiser les métriques pour chaque rôle
+        currentProject.team.forEach(member => {
+            if (!roleMetrics[member.role]) {
+                roleMetrics[member.role] = {
+                    role: member.role,
+                    members: [],
+                    taskCount: 0,
+                    estimatedHours: 0,
+                    loggedHours: 0
+                };
+            }
+            roleMetrics[member.role].members.push(member);
+        });
+
+        // Calculer les métriques pour chaque tâche
+        (currentProject.tasks || []).forEach(task => {
+            if (task.assignee) {
+                const role = task.assignee.role;
+                if (roleMetrics[role]) {
+                    roleMetrics[role].taskCount += 1;
+                    roleMetrics[role].estimatedHours += task.estimatedHours || 0;
+                    roleMetrics[role].loggedHours += task.loggedHours || 0;
+                }
+            }
+        });
+
+        // Convertir en tableau et ajouter le nombre de membres
+        return Object.values(roleMetrics).map((roleData: any) => ({
+            ...roleData,
+            memberCount: roleData.members.length
+        }));
+    };
+
     const handleUpdateTask = (taskId: string, updates: any) => {
         const updatedTasks = (currentProject.tasks || []).map(task =>
             task.id === taskId ? { ...task, ...updates } : task
@@ -562,6 +599,54 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar avec informations du projet */}
                     <div className="lg:col-span-1">
+                        {/* Métriques globales style Power BI */}
+                        <div className="bg-white rounded-lg shadow p-6 mb-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <i className="fas fa-chart-bar text-blue-600 mr-2"></i>
+                                Métriques du projet
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-green-600 font-medium">Tâches</p>
+                                            <p className="text-2xl font-bold text-green-700">{(currentProject.tasks || []).length}</p>
+                                        </div>
+                                        <i className="fas fa-tasks text-green-500 text-xl"></i>
+                                    </div>
+                                </div>
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-blue-600 font-medium">Équipe</p>
+                                            <p className="text-2xl font-bold text-blue-700">{currentProject.team.length}</p>
+                                        </div>
+                                        <i className="fas fa-users text-blue-500 text-xl"></i>
+                                    </div>
+                                </div>
+                                <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg p-4 border border-purple-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-purple-600 font-medium">Heures Est.</p>
+                                            <p className="text-2xl font-bold text-purple-700">
+                                                {(currentProject.tasks || []).reduce((sum, task) => sum + (task.estimatedHours || 0), 0)}h
+                                            </p>
+                                        </div>
+                                        <i className="fas fa-clock text-purple-500 text-xl"></i>
+                                    </div>
+                                </div>
+                                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-4 border border-orange-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-orange-600 font-medium">Enregistrées</p>
+                                            <p className="text-2xl font-bold text-orange-700">{totalLoggedHours}h</p>
+                                        </div>
+                                        <i className="fas fa-stopwatch text-orange-500 text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="bg-white rounded-lg shadow p-6">
                             <h2 className="text-lg font-semibold text-gray-900 mb-4">Informations du projet</h2>
                             
@@ -603,6 +688,53 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Suivi du temps</label>
                                     <p className="mt-1 text-sm text-gray-900">{totalLoggedHours}h enregistrées</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Charge de travail de l'équipe</label>
+                                    <div className="mt-3 space-y-3">
+                                        {getTeamWorkloadMetrics().map((roleData, index) => (
+                                            <div key={index} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                            {roleData.role.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-900">{roleData.role}</h4>
+                                                            <p className="text-sm text-gray-600">{roleData.memberCount} membre(s)</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex space-x-4">
+                                                        <div className="text-center">
+                                                            <div className="text-2xl font-bold text-green-600">{roleData.taskCount}</div>
+                                                            <div className="text-xs text-gray-500">Tâches</div>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <div className="text-2xl font-bold text-blue-600">{roleData.estimatedHours}h</div>
+                                                            <div className="text-xs text-gray-500">Est. Heures</div>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <div className="text-2xl font-bold text-purple-600">{roleData.loggedHours}h</div>
+                                                            <div className="text-xs text-gray-500">Enregistrées</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3">
+                                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                                        <span>Progression</span>
+                                                        <span>{Math.round((roleData.loggedHours / Math.max(roleData.estimatedHours, 1)) * 100)}%</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                        <div 
+                                                            className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-300"
+                                                            style={{ width: `${Math.min((roleData.loggedHours / Math.max(roleData.estimatedHours, 1)) * 100, 100)}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
