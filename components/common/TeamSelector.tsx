@@ -27,6 +27,7 @@ const TeamSelector: React.FC<TeamSelectorProps> = ({
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   // Charger les utilisateurs disponibles
   useEffect(() => {
@@ -71,6 +72,23 @@ const TeamSelector: React.FC<TeamSelectorProps> = ({
     }
   }, [searchTerm, availableUsers]);
 
+  // Gérer les clics en dehors du dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
   const handleUserSelect = (user: User) => {
     const isAlreadySelected = selectedUsers.some(selected => selected.id === user.id);
     
@@ -107,7 +125,7 @@ const TeamSelector: React.FC<TeamSelectorProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div ref={dropdownRef} className="space-y-3">
       {/* Utilisateurs sélectionnés */}
       {selectedUsers.length > 0 && (
         <div className="space-y-2">

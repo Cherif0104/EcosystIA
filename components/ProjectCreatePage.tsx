@@ -92,6 +92,7 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
     };
 
     const handleTeamChange = (selectedUsers: User[]) => {
+        console.log('Team changed:', selectedUsers);
         handleInputChange('team', selectedUsers);
     };
 
@@ -220,9 +221,8 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
                                     errors.team ? 'border-red-500' : 'border-gray-300'
                                 }`}>
                                     <TeamSelector
-                                        users={users}
                                         selectedUsers={formData.team}
-                                        onSelectionChange={handleTeamChange}
+                                        onUsersChange={handleTeamChange}
                                         placeholder="Sélectionnez les membres de l'équipe"
                                     />
                                     {errors.team && (
