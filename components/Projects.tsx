@@ -6,6 +6,7 @@ import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';
 import TeamSelector from './common/TeamSelector';
 import ProjectDetailPage from './ProjectDetailPage';
+import ProjectCreatePage from './ProjectCreatePage';
 
 const statusStyles = {
     'Not Started': 'bg-gray-200 text-gray-800',
@@ -1505,6 +1506,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
     const [isProjectDetailPageOpen, setIsProjectDetailPageOpen] = useState(false);
+    const [isProjectCreatePageOpen, setIsProjectCreatePageOpen] = useState(false);
 
     const validateProject = (projectData: Project | Omit<Project, 'id' | 'tasks' | 'risks'>): string | null => {
         if (!projectData.title?.trim()) {
@@ -1519,7 +1521,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
         return null;
     };
 
-    const handleSaveProject = (projectData: Project | Omit<Project, 'id' | 'tasks' | 'risks'>) => {
+    const handleSaveProject = async (projectData: Project | Omit<Project, 'id' | 'tasks' | 'risks'>) => {
         const validationError = validateProject(projectData);
         if (validationError) {
             alert(validationError);
@@ -1531,7 +1533,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
         } else {
             onAddProject(projectData);
         }
-        setFormModalOpen(false);
+        setIsProjectCreatePageOpen(false);
         setEditingProject(null);
     };
 
@@ -1544,7 +1546,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
 
     const handleOpenForm = (project: Project | null = null) => {
         setEditingProject(project);
-        setFormModalOpen(true);
+        setIsProjectCreatePageOpen(true);
     };
 
     const filteredProjects = useMemo(() => {
@@ -1725,7 +1727,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                     <p className="mt-2 text-gray-600">Commencez par créer votre premier projet pour organiser votre travail</p>
                     {canManage && (
                         <button 
-                            onClick={() => setFormModalOpen(true)}
+                            onClick={() => setIsProjectCreatePageOpen(true)}
                             className="mt-6 bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
                         >
                             <i className="fas fa-plus mr-2"></i>
@@ -1735,16 +1737,16 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                 </div>
             )}
 
-            {/* Modals */}
-            {isFormModalOpen && (
-                <ProjectFormModal
-                    project={editingProject}
-                    users={users}
+            {/* Pages */}
+            {isProjectCreatePageOpen && (
+                <ProjectCreatePage
                     onClose={() => {
-                        setFormModalOpen(false);
+                        setIsProjectCreatePageOpen(false);
                         setEditingProject(null);
                     }}
                     onSave={handleSaveProject}
+                    users={users}
+                    editingProject={editingProject}
                 />
             )}
 
