@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContextSupabase';
+import { authGuard } from './middleware/authGuard';
 import { mockCourses, mockJobs, mockProjects, mockGoals, mockContacts, mockDocuments, mockAllUsers, mockTimeLogs, mockLeaveRequests, mockInvoices, mockExpenses, mockRecurringInvoices, mockRecurringExpenses, mockBudgets, mockMeetings } from './constants/data';
 import { Course, Job, Project, Objective, Contact, Document, User, Role, TimeLog, LeaveRequest, Invoice, Expense, AppNotification, RecurringInvoice, RecurringExpense, RecurrenceFrequency, Budget, Meeting } from './types';
 import { useLocalization } from './contexts/LocalizationContext';
+import DataAdapter from './services/dataAdapter';
 
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -31,16 +33,20 @@ import Finance from './components/Finance';
 
 
 const App: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user, signIn } = useAuth();
   const { t } = useLocalization();
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingOperation, setLoadingOperation] = useState<string | null>(null);
   
   // Lifted State
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [jobs, setJobs] = useState<Job[]>(mockJobs);
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [projects, setProjects] = useState<Project[]>([]); // Plus de données mockées - uniquement Supabase
   const [objectives, setObjectives] = useState<Objective[]>(mockGoals);
   const [contacts, setContacts] = useState<Contact[]>(mockContacts);
   const [documents, setDocuments] = useState<Document[]>(mockDocuments);
@@ -55,6 +61,101 @@ const App: React.FC = () => {
   const [meetings, setMeetings] = useState<Meeting[]>(mockMeetings);
   const [reminderDays, setReminderDays] = useState<number>(3);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // Initialisation avec protection de routes
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Vérifier l'authentification
+        const isAuthenticated = await authGuard.checkAuth();
+        
+        if (isAuthenticated) {
+          console.log('✅ Utilisateur authentifié - accès autorisé');
+          // L'utilisateur reste sur la page actuelle (pas de redirection)
+        } else {
+          console.log('🔒 Utilisateur non authentifié - redirection vers login');
+          setCurrentView('login');
+        }
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Erreur initialisation app:', error);
+        setCurrentView('login');
+        setIsInitialized(true);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  // Charger les données après initialisation - Logique robuste
+  useEffect(() => {
+    if (!isInitialized) return; // Attendre l'initialisation seulement
+    
+    const loadData = async () => {
+      try {
+        if (user) {
+          console.log('🔄 Chargement des projets depuis Supabase...');
+          
+          // Charger UNIQUEMENT les projets depuis Supabase
+          const projectsData = await DataAdapter.getProjects();
+          setProjects(projectsData);
+          
+          console.log('✅ Projets chargés depuis Supabase:', projectsData.length, 'projets');
+          
+          // Charger les objectifs depuis Supabase
+          console.log('🔄 Chargement des objectifs depuis Supabase...');
+          const objectivesData = await DataAdapter.getObjectives();
+          setObjectives(objectivesData);
+          
+          console.log('✅ Objectifs chargés depuis Supabase:', objectivesData.length, 'objectifs');
+        } else {
+          console.log('🔄 Utilisateur non connecté - aucun projet à charger');
+          setProjects([]);
+          setObjectives([]);
+        }
+        
+        setIsDataLoaded(true);
+      } catch (error) {
+        console.error('Erreur chargement données:', error);
+        setProjects([]); // Pas de fallback mocké
+        setObjectives([]);
+        setIsDataLoaded(true);
+      }
+    };
+
+    // Recharger les données quand user change
+    loadData();
+  }, [isInitialized, user]); // Retirer isDataLoaded des dépendances
+
+  // Protection de routes - rediriger vers login si non authentifié
+  useEffect(() => {
+    // Ajouter un délai pour éviter les redirections prématurées
+    const timeoutId = setTimeout(() => {
+      if (isInitialized && !user && currentView !== 'login' && currentView !== 'signup') {
+        console.log('🔒 Protection route - redirection vers login');
+        setCurrentView('login');
+        setIsDataLoaded(false); // Reset pour permettre le rechargement
+      } else if (isInitialized && user && currentView === 'login') {
+        console.log('✅ Utilisateur connecté - redirection vers dashboard');
+        setCurrentView('dashboard');
+      }
+    }, 100); // Délai de 100ms pour éviter les redirections prématurées
+
+    return () => clearTimeout(timeoutId);
+  }, [user, isInitialized]); // Retirer currentView des dépendances pour éviter les boucles
+
+  // Debug: Log de l'état utilisateur
+  useEffect(() => {
+    console.log('🔍 Debug App.tsx - État utilisateur:', { 
+      isInitialized, 
+      user: user ? 'présent' : 'null', 
+      currentView,
+      isDataLoaded 
+    });
+  }, [isInitialized, user, currentView, isDataLoaded]);
+
+  // Ancien useEffect supprimé - maintenant géré par le useEffect unifié ci-dessus
 
 
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
@@ -170,23 +271,11 @@ const App: React.FC = () => {
 
   }, [invoices, expenses, reminderDays, t]);
 
-  // --- Signup Handler ---
-  const handleUserSignup = (signupData: Omit<User, 'id' | 'avatar' | 'skills'>) => {
-    const newUser: User = {
-      id: Date.now(),
-      ...signupData,
-      avatar: `https://picsum.photos/seed/${Date.now()}/100/100`,
-      skills: [],
-    };
-    setUsers(prev => [...prev, newUser]);
-    login(newUser);
-  };
-
   if (!user) {
     if (authView === 'signup') {
-        return <Signup onSignup={handleUserSignup} onSwitchToLogin={() => setAuthView('login')} allUsers={users} />;
+        return <Signup onSwitchToLogin={() => setAuthView('login')} />;
     }
-    return <Login onSwitchToSignup={() => setAuthView('signup')} />;
+    return <Login onSwitchToSignup={() => setAuthView('signup')} onLoginSuccess={() => setCurrentView('dashboard')} />;
   }
 
   // --- CRUD & State Handlers ---
@@ -212,10 +301,19 @@ const App: React.FC = () => {
 
 
   // INVOICES
-    const handleAddInvoice = (invoiceData: Omit<Invoice, 'id'>) => {
-        const newInvoice: Invoice = { ...invoiceData, id: Date.now() };
+  const handleAddInvoice = async (invoiceData: Omit<Invoice, 'id'>) => {
+    try {
+      const newInvoice = await DataAdapter.createInvoice(invoiceData);
+      if (newInvoice) {
         setInvoices(prev => [newInvoice, ...prev]);
-    };
+      }
+    } catch (error) {
+      console.error('Erreur création facture:', error);
+      // Fallback vers l'ancienne méthode
+      const fallbackInvoice: Invoice = { ...invoiceData, id: Date.now() };
+      setInvoices(prev => [fallbackInvoice, ...prev]);
+    }
+  };
     const handleUpdateInvoice = (updatedInvoice: Invoice) => {
         setInvoices(prev => prev.map(i => i.id === updatedInvoice.id ? updatedInvoice : i));
     };
@@ -223,11 +321,20 @@ const App: React.FC = () => {
         setInvoices(prev => prev.filter(i => i.id !== invoiceId));
     };
 
-    // EXPENSES
-    const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
-        const newExpense: Expense = { ...expenseData, id: Date.now() };
+  // EXPENSES
+  const handleAddExpense = async (expenseData: Omit<Expense, 'id'>) => {
+    try {
+      const newExpense = await DataAdapter.createExpense(expenseData);
+      if (newExpense) {
         setExpenses(prev => [newExpense, ...prev]);
-    };
+      }
+    } catch (error) {
+      console.error('Erreur création dépense:', error);
+      // Fallback vers l'ancienne méthode
+      const fallbackExpense: Expense = { ...expenseData, id: Date.now() };
+      setExpenses(prev => [fallbackExpense, ...prev]);
+    }
+  };
     const handleUpdateExpense = (updatedExpense: Expense) => {
         setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
     };
@@ -325,39 +432,179 @@ const App: React.FC = () => {
   };
   
   // PROJECTS
-  const handleAddProject = (projectData: Omit<Project, 'id' | 'tasks' | 'risks'>) => {
-      const newProject: Project = {
-          id: Date.now(),
-          ...projectData,
-          tasks: [],
-          risks: [],
-      };
-      setProjects(prev => [newProject, ...prev]);
+  const handleAddProject = async (projectData: Omit<Project, 'id' | 'tasks' | 'risks'>) => {
+    setLoadingOperation('create');
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Création projet avec données:', projectData);
+      const newProject = await DataAdapter.createProject({
+        ...projectData,
+        tasks: [],
+        risks: [],
+      });
+      
+      console.log('📊 Projet créé:', newProject);
+      
+      if (newProject) {
+        setProjects(prev => {
+          const updated = [newProject, ...prev];
+          console.log('✅ Projets mis à jour:', updated.length);
+          return updated;
+        });
+        
+        // Recharger les projets pour s'assurer que les données sont à jour
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Rechargement des projets après création...');
+            const projects = await DataAdapter.getProjects();
+            setProjects(projects);
+            console.log('✅ Projets rechargés:', projects.length);
+          } catch (error) {
+            console.error('❌ Erreur rechargement projets:', error);
+          }
+        }, 1000);
+      } else {
+        console.error('❌ Aucun projet retourné par DataAdapter');
+        throw new Error('Aucun projet retourné par le serveur');
+      }
+    } catch (error) {
+      console.error('Erreur création projet:', error);
+      // TODO: Remplacer par une notification toast
+      alert('Erreur lors de la création du projet. Veuillez réessayer.');
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
   
-  const handleUpdateProject = (updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  const handleUpdateProject = async (updatedProject: Project) => {
+    setLoadingOperation('update');
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Mise à jour projet avec données:', updatedProject);
+      const result = await DataAdapter.updateProject(updatedProject);
+      
+      if (result) {
+        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+        console.log('✅ Projet mis à jour avec succès');
+      } else {
+        console.error('❌ Échec de la mise à jour du projet');
+        throw new Error('Échec de la mise à jour du projet');
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour projet:', error);
+      // TODO: Remplacer par une notification toast
+      alert('Erreur lors de la mise à jour du projet. Veuillez réessayer.');
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
   
-  const handleDeleteProject = (projectId: number) => {
-      setProjects(prev => prev.filter(p => p.id !== projectId));
-      // Also delete related OKRs
-      setObjectives(prev => prev.filter(o => o.projectId !== projectId));
+  const handleDeleteProject = async (projectId: number) => {
+    setLoadingOperation('delete');
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Suppression projet ID:', projectId);
+      const result = await DataAdapter.deleteProject(projectId);
+      
+      if (result) {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        // Also delete related OKRs
+        setObjectives(prev => prev.filter(o => o.projectId !== projectId));
+        console.log('✅ Projet supprimé avec succès');
+      } else {
+        console.error('❌ Échec de la suppression du projet');
+        throw new Error('Échec de la suppression du projet');
+      }
+    } catch (error) {
+      console.error('Erreur suppression projet:', error);
+      // TODO: Remplacer par une notification toast
+      alert('Erreur lors de la suppression du projet. Veuillez réessayer.');
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
 
   // OBJECTIVES (OKRs)
   const handleSetObjectives = (newObjectives: Objective[]) => {
       setObjectives(newObjectives);
   };
-  const handleAddObjective = (objectiveData: Omit<Objective, 'id'>) => {
-      const newObjective: Objective = { ...objectiveData, id: `obj-${Date.now()}` };
-      setObjectives(prev => [...prev, newObjective]);
+  
+  const handleAddObjective = async (objectiveData: Omit<Objective, 'id'>) => {
+    setLoadingOperation('create_objective');
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Création objectif avec données:', objectiveData);
+      
+      const newObjective = await DataAdapter.createObjective(objectiveData);
+      
+      if (newObjective) {
+        setObjectives(prev => [newObjective, ...prev]);
+        console.log('✅ Objectif créé:', newObjective.id);
+      } else {
+        throw new Error('Aucun objectif retourné par le serveur');
+      }
+    } catch (error) {
+      console.error('Erreur création objectif:', error);
+      alert('Erreur lors de la création de l\'objectif. Veuillez réessayer.');
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
-  const handleUpdateObjective = (updatedObjective: Objective) => {
-      setObjectives(prev => prev.map(o => o.id === updatedObjective.id ? updatedObjective : o));
+  
+  const handleUpdateObjective = async (updatedObjective: Objective) => {
+    setLoadingOperation('update_objective');
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Mise à jour objectif avec données:', updatedObjective);
+      
+      const updated = await DataAdapter.updateObjective(updatedObjective.id, updatedObjective);
+      
+      if (updated) {
+        setObjectives(prev => prev.map(o => o.id === updated.id ? updated : o));
+        console.log('✅ Objectif mis à jour avec succès');
+      } else {
+        throw new Error('Aucun objectif retourné par le serveur');
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour objectif:', error);
+      alert('Erreur lors de la mise à jour de l\'objectif. Veuillez réessayer.');
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
-  const handleDeleteObjective = (objectiveId: string) => {
-      setObjectives(prev => prev.filter(o => o.id !== objectiveId));
+  
+  const handleDeleteObjective = async (objectiveId: string) => {
+    setLoadingOperation('delete_objective');
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Suppression objectif ID:', objectiveId);
+      
+      const success = await DataAdapter.deleteObjective(objectiveId);
+      
+      if (success) {
+        setObjectives(prev => prev.filter(o => o.id !== objectiveId));
+        console.log('✅ Objectif supprimé avec succès');
+      } else {
+        throw new Error('Échec de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur suppression objectif:', error);
+      alert('Erreur lors de la suppression de l\'objectif. Veuillez réessayer.');
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
 
 
@@ -379,9 +626,18 @@ const App: React.FC = () => {
 
 
   // CONTACTS (CRM)
-  const handleAddContact = (contactData: Omit<Contact, 'id'>) => {
-      const newContact: Contact = { ...contactData, id: Date.now() };
-      setContacts(prev => [newContact, ...prev]);
+  const handleAddContact = async (contactData: Omit<Contact, 'id'>) => {
+    try {
+      const newContact = await DataAdapter.createContact(contactData);
+      if (newContact) {
+        setContacts(prev => [newContact, ...prev]);
+      }
+    } catch (error) {
+      console.error('Erreur création contact:', error);
+      // Fallback vers l'ancienne méthode
+      const fallbackContact: Contact = { ...contactData, id: Date.now() };
+      setContacts(prev => [fallbackContact, ...prev]);
+    }
   };
   const handleUpdateContact = (updatedContact: Contact) => {
       setContacts(prev => prev.map(c => c.id === updatedContact.id ? updatedContact : c));
@@ -438,6 +694,8 @@ const App: React.FC = () => {
                     onAddProject={handleAddProject}
                     onDeleteProject={handleDeleteProject}
                     onAddTimeLog={handleAddTimeLog}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                 />;
       case 'goals_okrs':
         return <Goals 

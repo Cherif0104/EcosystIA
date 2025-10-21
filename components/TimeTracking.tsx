@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { TimeLog, Project, Course, Meeting, User } from '../types';
 import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';

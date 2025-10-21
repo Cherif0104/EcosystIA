@@ -197,8 +197,8 @@ export const mockJobs: Job[] = [
 
 export const mockProjects: Project[] = [
     {
-        id: 1,
-        title: "Q4 Marketing Campaign Launch",
+        id: "1",
+        title: "Lancement de la campagne marketing du quatrième trimestre",
         description: "Develop and execute a comprehensive marketing campaign for the new product line. The campaign should target young professionals and students.",
         status: "In Progress",
         dueDate: "2024-12-31",
@@ -212,7 +212,7 @@ export const mockProjects: Project[] = [
         risks: []
     },
     {
-        id: 2,
+        id: "2",
         title: "E-commerce Platform Upgrade",
         description: "Integrate a new payment gateway and AI-powered recommendation engine into the existing e-commerce platform to improve user experience and increase sales.",
         status: "Not Started",
@@ -222,7 +222,7 @@ export const mockProjects: Project[] = [
         risks: []
     },
     {
-        id: 3,
+        id: "3",
         title: "AI Chatbot for Customer Support",
         description: "Design, develop, and deploy an AI-powered chatbot to assist customers with common questions about products, orders, and platform navigation.",
         status: "Completed",
@@ -241,12 +241,12 @@ export const mockProjects: Project[] = [
 export const mockGoals: Objective[] = [
     {
         id: "okr1",
-        projectId: 1,
-        title: "Successfully Launch Q4 Campaign and Achieve Early Adoption",
+        projectId: "1",
+        title: "Lancer avec succès la campagne du quatrième trimestre et obtenir une adoption rapide",
         keyResults: [
-            { id: 'kr1-1', title: "Achieve 10,000 user sign-ups within the first month post-launch", current: 3500, target: 10000, unit: "users" },
-            { id: 'kr1-2', title: "Secure 50 B2B partners to integrate the new product", current: 5, target: 50, unit: "partners" },
-            { id: 'kr1-3', title: "Attain a user satisfaction score of 8.5/10", current: 0, target: 8.5, unit: "/10" },
+            { id: 'kr1-1', title: "Atteindre 10 000 inscriptions d'utilisateurs au cours du premier mois suivant le lancement", current: 3500, target: 10000, unit: "utilisateurs" },
+            { id: 'kr1-2', title: "Sécuriser 50 partenaires B2B pour intégrer le nouveau produit", current: 5, target: 50, unit: "partenaires" },
+            { id: 'kr1-3', title: "Atteindre un score de satisfaction utilisateur de 8,5/10", current: 0, target: 8.5, unit: "/10" },
         ]
     }
 ];

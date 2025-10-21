@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { Language, AppNotification } from '../types';
 import NexusFlowIcon from './icons/NexusFlowIcon';
@@ -13,7 +13,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, setView, notifications, onMarkNotificationAsRead, onClearAllNotifications }) => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const { language, setLanguage, t } = useLocalization();
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [isLangOpen, setLangOpen] = useState(false);
@@ -101,14 +101,14 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, setView, notifications, 
             {/* Profile Dropdown */}
             <div className="relative">
               <button onClick={() => setProfileOpen(!isProfileOpen)} className="flex items-center space-x-2">
-                <img className="h-8 w-8 rounded-full" src={user?.avatar} alt={user?.name} />
+                <img className="h-8 w-8 rounded-full" src={user?.avatar || '/default-avatar.png'} alt={user?.name} />
                 <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name}</span>
               </button>
               {isProfileOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
                   <a href="#" onClick={(e) => { e.preventDefault(); handleNavigate('settings'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{t('profile')}</a>
                   <a href="#" onClick={(e) => { e.preventDefault(); handleNavigate('settings'); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{t('settings')}</a>
-                  <button onClick={logout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{t('logout')}</button>
+                  <button onClick={() => signOut()} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{t('logout')}</button>
                 </div>
               )}
             </div>

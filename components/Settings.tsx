@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { Language } from '../types';
 
 interface SettingsProps {

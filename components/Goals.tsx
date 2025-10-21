@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { Project, Objective, KeyResult } from '../types';
 import { generateOKRs } from '../services/geminiService';
 import ConfirmationModal from './common/ConfirmationModal';
 
 const ObjectiveFormModal: React.FC<{
     objective: Objective | null;
-    projectId: number;
+    projectId: string;
     onClose: () => void;
     onSave: (objective: Objective | Omit<Objective, 'id'>) => void;
 }> = ({ objective, projectId, onClose, onSave }) => {
@@ -91,7 +91,6 @@ const ObjectiveFormModal: React.FC<{
     );
 };
 
-
 const SuggestedOKRsModal: React.FC<{
     isLoading: boolean;
     suggestions: Objective[];
@@ -104,7 +103,7 @@ const SuggestedOKRsModal: React.FC<{
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div className="p-6 border-b">
-                    <h2 className="text-2xl font-bold">AI-Generated OKR Suggestions</h2>
+                    <h2 className="text-2xl font-bold">{t('ai_okr_suggestions')}</h2>
                 </div>
                 <div className="p-6 flex-grow overflow-y-auto">
                     {isLoading ? (
@@ -120,7 +119,7 @@ const SuggestedOKRsModal: React.FC<{
                                         {obj.keyResults.map(kr => (
                                             <div key={kr.id}>
                                                 <p className="font-semibold text-gray-700">{kr.title}</p>
-                                                <p className="text-sm text-gray-500">Target: {kr.target} {kr.unit}</p>
+                                                <p className="text-sm text-gray-500">Objectif : {kr.target} {kr.unit}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -128,7 +127,7 @@ const SuggestedOKRsModal: React.FC<{
                             ))}
                         </div>
                     ) : (
-                        <p className="text-center text-gray-500">No suggestions were generated. Please try again.</p>
+                        <p className="text-center text-gray-500">Aucune suggestion générée. Veuillez réessayer.</p>
                     )}
                 </div>
                 <div className="p-4 bg-gray-50 border-t flex justify-end space-x-2">
@@ -138,14 +137,13 @@ const SuggestedOKRsModal: React.FC<{
                         disabled={isLoading || suggestions.length === 0}
                         className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700 disabled:bg-emerald-300"
                     >
-                        Add to Project
+                        {t('add_to_project')}
                     </button>
                 </div>
             </div>
         </div>
     );
 };
-
 
 interface GoalsProps {
     projects: Project[];
@@ -159,7 +157,7 @@ interface GoalsProps {
 const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAddObjective, onUpdateObjective, onDeleteObjective }) => {
     const { t } = useLocalization();
     const { user } = useAuth();
-    const [selectedProjectId, setSelectedProjectId] = useState<number | null>(projects[0]?.id || null);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projects[0]?.id || null);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
@@ -196,8 +194,10 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
         setLoading(false);
     };
 
-    const handleAddSuggestedOKRs = (suggestions: Objective[]) => {
-        setObjectives([...objectives, ...suggestions]);
+    const handleAddSuggestedOKRs = async (suggestions: Objective[]) => {
+        for (const suggestion of suggestions) {
+            await onAddObjective(suggestion);
+        }
         setIsSuggestionModalOpen(false);
         setSuggestedOKRs([]);
     };
@@ -228,22 +228,38 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
         }
     };
 
+    const handleUpdateCurrentValue = (objectiveId: string, krId: string, newValue: number) => {
+        const objective = objectives.find(o => o.id === objectiveId);
+        if (!objective) return;
+
+        const updatedObjective = {
+            ...objective,
+            keyResults: objective.keyResults.map(kr => 
+                kr.id === krId ? { ...kr, current: newValue } : kr
+            )
+        };
+        
+        onUpdateObjective(updatedObjective);
+    };
+
     const currentObjectives = objectives.filter(o => o.projectId === selectedProjectId);
 
     return (
         <div>
+            {/* En-tête exactement comme dans le MVP client */}
             <h1 className="text-3xl font-bold text-gray-800">{t('goals_okrs_title')}</h1>
             <p className="mt-1 text-gray-600">{t('goals_okrs_subtitle')}</p>
 
             <div className="mt-8 max-w-4xl mx-auto">
-                <div className="bg-white p-6 rounded-xl shadow-lg">
+                {/* Barre d'actions avec dropdown et boutons */}
+                <div className="bg-white p-6 rounded-xl shadow-lg mb-6">
                     <div className="flex flex-col sm:flex-row gap-4">
                         <div className="flex-grow">
                             <label htmlFor="project-select" className="block text-sm font-medium text-gray-700">{t('select_project')}</label>
                             <select
                                 id="project-select"
                                 value={selectedProjectId || ''}
-                                onChange={(e) => setSelectedProjectId(Number(e.target.value))}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
                                 className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
                             >
                                 {projects.map(p => (
@@ -251,35 +267,41 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                 ))}
                             </select>
                         </div>
-                        {canManage && (
-                             <div className="self-end flex gap-2">
-                                 <button 
-                                    onClick={() => setModalOpen(true)}
-                                    disabled={!selectedProjectId}
-                                    className="w-full sm:w-auto bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:bg-blue-300">
-                                    <i className="fas fa-plus mr-2"></i>{t('create_objective')}
-                                </button>
-                                <button 
-                                    onClick={handleGenerateOKRs}
-                                    disabled={!selectedProjectId}
-                                    className="w-full sm:w-auto bg-emerald-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-emerald-700 disabled:bg-gray-400 flex items-center justify-center">
-                                    <i className="fas fa-magic mr-2"></i>
-                                    {t('generate_okrs_with_ai')}
-                                </button>
-                            </div>
-                        )}
+                        <div className="self-end flex gap-2">
+                            <button 
+                                onClick={() => setModalOpen(true)}
+                                disabled={!selectedProjectId}
+                                className="w-full sm:w-auto bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700 disabled:bg-blue-300">
+                                <i className="fas fa-plus mr-2"></i>{t('create_objective')}
+                            </button>
+                            <button 
+                                onClick={handleGenerateOKRs}
+                                disabled={!selectedProjectId}
+                                className="w-full sm:w-auto bg-emerald-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-emerald-700 disabled:bg-gray-400 flex items-center justify-center">
+                                <i className="fas fa-magic mr-2"></i>
+                                {t('generate_okrs_with_ai')}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-6 space-y-6">
+                {/* Cartes d'objectifs exactement comme dans le MVP client */}
+                <div className="space-y-6">
                     {currentObjectives.map(obj => (
                         <div key={obj.id} className="bg-white p-6 rounded-xl shadow-lg group">
                             <div className="flex justify-between items-start">
-                                <h3 className="text-xl font-bold text-gray-900"><i className="fas fa-bullseye text-emerald-500 mr-3"></i>{t('objective')}: {obj.title}</h3>
+                                <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                                    <i className="fas fa-bullseye text-emerald-500 mr-3"></i>
+                                    {t('objective')}: {obj.title}
+                                </h3>
                                 {canManage && (
                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-2">
-                                        <button onClick={() => handleEdit(obj)} className="text-blue-600"><i className="fas fa-edit"></i></button>
-                                        <button onClick={() => handleDelete(obj)} className="text-red-600"><i className="fas fa-trash"></i></button>
+                                        <button onClick={() => handleEdit(obj)} className="text-blue-600 hover:text-blue-800">
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button onClick={() => handleDelete(obj)} className="text-red-600 hover:text-red-800">
+                                            <i className="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -293,7 +315,16 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                                                     <div className="bg-gradient-to-r from-emerald-400 to-teal-500 h-2.5 rounded-full" style={{ width: `${Math.min(progress, 100)}%` }}></div>
                                                 </div>
-                                                <span className="text-sm font-medium text-gray-600">{kr.current} / {kr.target} {kr.unit}</span>
+                                                <span className="text-sm font-medium text-gray-600 min-w-fit">
+                                                    <input
+                                                        type="number"
+                                                        value={kr.current}
+                                                        onChange={(e) => handleUpdateCurrentValue(obj.id, kr.id, Number(e.target.value))}
+                                                        className="w-16 text-center border-b border-gray-300 focus:border-emerald-500 focus:outline-none bg-transparent"
+                                                        min="0"
+                                                    />
+                                                    / {kr.target} {kr.unit}
+                                                </span>
                                             </div>
                                         </div>
                                     )
@@ -304,11 +335,26 @@ const Goals: React.FC<GoalsProps> = ({ projects, objectives, setObjectives, onAd
                      {currentObjectives.length === 0 && !loading && (
                         <div className="text-center py-12 text-gray-500">
                             <i className="fas fa-box-open fa-3x"></i>
-                            <p className="mt-4">No OKRs for this project. Try generating them with AI!</p>
+                            <p className="mt-4">Aucun OKR pour ce projet. Essayez de les générer avec l'IA !</p>
                         </div>
                     )}
                 </div>
             </div>
+            
+            {/* Bouton flottant IA comme dans le MVP client */}
+            {selectedProjectId && (
+                <div className="fixed bottom-6 right-6 z-50">
+                    <button
+                        onClick={handleGenerateOKRs}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+                        title={t('generate_okrs_with_ai')}
+                    >
+                        <i className="fas fa-robot text-xl"></i>
+                    </button>
+                </div>
+            )}
+            
+            {/* Modals */}
             {isModalOpen && selectedProjectId && (
                 <ObjectiveFormModal 
                     objective={editingObjective}

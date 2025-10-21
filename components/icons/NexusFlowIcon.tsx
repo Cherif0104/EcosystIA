@@ -23,7 +23,7 @@ const NexusFlowIcon: React.FC<{ className?: string }> = ({ className }) => (
           dur="5s" 
           repeatCount="indefinite" 
           additive="sum"
-          transform-origin="50 50"
+          transformOrigin="50 50"
         />
       </path>
       <path

@@ -63,11 +63,11 @@ export interface Job {
 export interface Task {
   id: string;
   text: string;
-  status: 'To Do' | 'In Progress' | 'Done';
+  status: 'To Do' | 'In Progress' | 'Completed';
   priority: 'High' | 'Medium' | 'Low';
   assignee?: User;
-  estimatedTime?: number;
-  loggedTime?: number;
+  estimatedHours?: number;
+  loggedHours?: number;
   dueDate?: string;
 }
 
@@ -80,7 +80,7 @@ export interface Risk {
 }
 
 export interface Project {
-  id: number;
+  id: string;
   title: string;
   description: string;
   status: 'Not Started' | 'In Progress' | 'Completed';
@@ -100,9 +100,23 @@ export interface KeyResult {
 
 export interface Objective {
   id: string;
-  projectId: number;
+  projectId: string;
   title: string;
+  description?: string;
+  quarter?: string;
+  year?: number;
+  ownerId?: string;
+  ownerName?: string;
+  status?: string;
+  progress?: number;
+  priority?: string;
+  startDate?: string;
+  endDate?: string;
+  category?: string;
+  teamMembers?: string[];
   keyResults: KeyResult[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Contact {

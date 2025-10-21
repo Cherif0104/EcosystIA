@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { Course, Job, Project, TimeLog, LeaveRequest, Invoice, Expense } from '../types';
 
@@ -170,7 +170,25 @@ const ProjectStatusPieChart: React.FC<{ projects: Project[] }> = ({ projects }) 
     }, [projects]);
 
     const totalProjects = projects.length;
-    if (totalProjects === 0) return null;
+    if (totalProjects === 0) {
+        return (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-bold text-gray-700 mb-4">{t('project_status_overview')}</h2>
+                <div className="text-center py-8">
+                    <div className="text-gray-400 mb-4">
+                        <i className="fas fa-folder-open text-4xl"></i>
+                    </div>
+                    <p className="text-gray-600 mb-4">Aucun projet créé pour le moment</p>
+                    <button 
+                        onClick={() => setView('projects')}
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                        Créer votre premier projet
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const percentages = {
         completed: (statusCounts['Completed'] / totalProjects) * 100,

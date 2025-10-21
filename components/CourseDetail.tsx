@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { Course, Lesson, Module, TimeLog, Project, EvidenceDocument } from '../types';
 import LogTimeModal from './LogTimeModal';
 

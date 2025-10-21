@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { Invoice, Expense, Receipt, RecurringInvoice, RecurringExpense, RecurrenceFrequency, Budget, Project, BudgetLine, BudgetItem } from '../types';
 import ConfirmationModal from './common/ConfirmationModal';
 

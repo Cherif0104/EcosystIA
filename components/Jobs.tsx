@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { Job, User } from '../types';
 
 const CircularProgress: React.FC<{ score: number }> = ({ score }) => {

@@ -1,26 +1,52 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { mockUsers } from '../constants/data';
 import NexusFlowIcon from './icons/NexusFlowIcon';
-import { Role } from '../types';
 import AuthAIAssistant from './AuthAIAssistant';
+import SenegelUsersList from './SenegelUsersList';
 
 interface LoginProps {
   onSwitchToSignup: () => void;
+  onLoginSuccess?: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onSwitchToSignup }) => {
-  const [selectedRole, setSelectedRole] = useState<Role>('manager');
-  const { login } = useAuth();
+const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onLoginSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { signIn } = useAuth();
   const { t } = useLocalization();
   const [isAssistantOpen, setAssistantOpen] = useState(false);
   const [assistantInitialPrompt, setAssistantInitialPrompt] = useState('');
+  const [showUsersList, setShowUsersList] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const userToLogin = Object.values(mockUsers).find(u => u.role === selectedRole) || mockUsers.student;
-    login(userToLogin);
+    console.log('🔐 Tentative de connexion avec:', { email, password: '***' });
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await signIn(email, password);
+      console.log('📋 Résultat de connexion:', result);
+      
+      if (!result.success) {
+        setError(result.error?.message || 'Erreur de connexion');
+        console.error('❌ Erreur de connexion:', result.error);
+      } else {
+        console.log('✅ Connexion réussie !');
+        // Appeler le callback de succès pour la redirection contrôlée
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+      }
+    } catch (error) {
+      console.error('💥 Erreur lors de la connexion:', error);
+      setError('Erreur inattendue lors de la connexion');
+    }
+    
+    setLoading(false);
   };
 
   const openAssistant = (prompt: string = '') => {
@@ -43,95 +69,124 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup }) => {
           <div className="md:w-1/2 p-8 md:p-12">
             <h2 className="text-3xl font-bold text-gray-900">{t('login_title')}</h2>
              <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+                  {error}
+                </div>
+              )}
+              
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                  {t('loginAs')}
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  {t('email')}
                 </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as Role)}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
-                >
-                  <optgroup label={t('youth')}>
-                    <option value="student">{t('student')}</option>
-                    <option value="entrepreneur">{t('entrepreneur')}</option>
-                  </optgroup>
-                  <optgroup label={t('partner')}>
-                    <option value="employer">{t('employer')}</option>
-                    <option value="trainer">{t('trainer')}</option>
-                    <option value="funder">{t('funder')}</option>
-                    <option value="implementer">{t('implementer')}</option>
-                  </optgroup>
-                  <optgroup label={t('contributor_category')}>
-                    <option value="mentor">{t('mentor')}</option>
-                    <option value="coach">{t('coach')}</option>
-                    <option value="facilitator">{t('facilitator')}</option>
-                    <option value="publisher">{t('publisher')}</option>
-                    <option value="editor">{t('editor')}</option>
-                    <option value="producer">{t('producer')}</option>
-                    <option value="artist">{t('artist')}</option>
-                    <option value="alumni">{t('alumni')}</option>
-                  </optgroup>
-                  <optgroup label={t('staff_category')}>
-                    <option value="intern">{t('intern')}</option>
-                    <option value="supervisor">{t('supervisor')}</option>
-                    <option value="manager">{t('manager')}</option>
-                    <option value="administrator">{t('administrator')}</option>
-                  </optgroup>
-                  <optgroup label={t('super_admin_category')}>
-                    <option value="super_administrator">{t('super_administrator')}</option>
-                  </optgroup>
-                </select>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  placeholder="votre@email.com"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  {t('password')}
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  placeholder="••••••••"
+                />
               </div>
 
               <div className="text-right text-sm">
-                <a href="#" onClick={(e) => { e.preventDefault(); openAssistant(t('auth_ai_prompt_password')); }} className="font-medium text-emerald-600 hover:text-emerald-500">
+                <button
+                  type="button"
+                  onClick={() => openAssistant(t('auth_ai_prompt_password'))}
+                  className="text-emerald-600 hover:text-emerald-500 font-medium"
+                >
                   {t('forgot_password')}
-                </a>
+                </button>
               </div>
 
               <div>
                 <button
                   type="submit"
-                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+                  disabled={loading}
+                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t('login')}
+                  {loading ? 'Connexion...' : t('login')}
+                </button>
+              </div>
+
+              <div className="text-center">
+                <span className="text-sm text-gray-600">
+                  {t('login_prompt')}{' '}
+                  <button
+                    type="button"
+                    onClick={onSwitchToSignup}
+                    className="text-emerald-600 hover:text-emerald-500 font-medium"
+                  >
+                    {t('signup_prompt')}
+                  </button>
+                </span>
+              </div>
+
+              <div className="text-center space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUsersList(!showUsersList)}
+                  className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                >
+                  👥 Voir les utilisateurs SENEGEL disponibles
+                </button>
+                <br/>
+                <button
+                  type="button"
+                  onClick={() => openAssistant()}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  {t('need_help')}
                 </button>
               </div>
             </form>
-            <div className="mt-6">
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">Or</span>
-                    </div>
-                </div>
-                <div className="mt-6 text-center">
-                    <a href="#" onClick={(e) => { e.preventDefault(); onSwitchToSignup(); }} className="text-sm text-emerald-600 hover:underline font-medium">
-                        {t('signup_prompt')}
-                    </a>
-                </div>
-            </div>
           </div>
         </div>
       </div>
-      <button 
-        onClick={() => openAssistant()}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white w-auto h-12 px-4 rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-      >
-        <i className="fas fa-question-circle mr-2"></i> {t('need_help')}
-      </button>
 
       {isAssistantOpen && (
-        <AuthAIAssistant 
+        <AuthAIAssistant
+          isOpen={isAssistantOpen}
           onClose={() => setAssistantOpen(false)}
-          context="login"
           initialPrompt={assistantInitialPrompt}
         />
+      )}
+
+      {showUsersList && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Utilisateurs SENEGEL</h2>
+                <button
+                  onClick={() => setShowUsersList(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              <SenegelUsersList />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

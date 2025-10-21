@@ -4,7 +4,7 @@
 import React from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import NexusFlowIcon from './icons/NexusFlowIcon';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextSupabase';
 import { Role } from '../types';
 
 interface SidebarProps {
