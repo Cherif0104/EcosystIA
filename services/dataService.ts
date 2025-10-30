@@ -120,6 +120,20 @@ export class DataService {
       // Convertir userId en string si c'est un number
       const userIdStr = String(userId);
       
+      // Vérifier que l'utilisateur existe d'abord
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userIdStr)
+        .single();
+      
+      if (checkError || !existingUser) {
+        console.error('❌ Erreur: Utilisateur non trouvé dans profiles:', userIdStr);
+        throw new Error('Utilisateur non trouvé');
+      }
+      
+      console.log('✅ Utilisateur trouvé:', existingUser.email, existingUser.full_name);
+      
       const { error } = await supabase
         .from('profiles')
         .delete()
