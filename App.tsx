@@ -1217,9 +1217,9 @@ const App: React.FC = () => {
       case 'gen_ai_lab':
         return <GenAILab />;
       case 'analytics':
-        return <Analytics setView={handleSetView} />;
+        return <Analytics setView={handleSetView} users={users} projects={projects} courses={courses} jobs={jobs} />;
       case 'talent_analytics':
-        return <TalentAnalytics setView={handleSetView} />;
+        return <TalentAnalytics setView={handleSetView} users={users} jobs={jobs} />;
       case 'settings':
         return <Settings reminderDays={reminderDays} onSetReminderDays={setReminderDays} />;
       default:
