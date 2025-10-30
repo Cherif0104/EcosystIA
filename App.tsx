@@ -736,44 +736,62 @@ const App: React.FC = () => {
   // USERS
   const handleUpdateUser = async (updatedUser: User) => {
     try {
+      console.log('🔄 handleUpdateUser appelé:', { userId: updatedUser.id, updatedUser });
       const currentUser = users.find(u => u.id === updatedUser.id);
       
+      if (!currentUser) {
+        console.error('❌ Utilisateur non trouvé:', updatedUser.id);
+        throw new Error('Utilisateur non trouvé');
+      }
+      
+      console.log('📋 Utilisateur actuel:', { currentUser });
+      
       // Si le rôle a changé, mettre à jour dans Supabase
-      if (currentUser && currentUser.role !== updatedUser.role) {
-        console.log('🔄 Rôle modifié, mise à jour dans Supabase:', { userId: updatedUser.id, newRole: updatedUser.role });
+      if (currentUser.role !== updatedUser.role) {
+        console.log('🔄 Rôle modifié, mise à jour dans Supabase:', { userId: updatedUser.id, oldRole: currentUser.role, newRole: updatedUser.role });
         await DataService.updateUserRole(String(updatedUser.id), updatedUser.role);
       }
       
       // Mettre à jour les autres champs du profil si modifiés
-      if (currentUser) {
-        const profileUpdates: any = {};
-        let hasProfileChanges = false;
-        
-        if (currentUser.name !== updatedUser.name) {
-          profileUpdates.full_name = updatedUser.name;
-          hasProfileChanges = true;
+      const profileUpdates: any = {};
+      let hasProfileChanges = false;
+      
+      if (currentUser.name !== updatedUser.name) {
+        profileUpdates.full_name = updatedUser.name;
+        hasProfileChanges = true;
+        console.log('📋 Nom modifié:', { old: currentUser.name, new: updatedUser.name });
+      }
+      if (currentUser.email !== updatedUser.email) {
+        profileUpdates.email = updatedUser.email;
+        hasProfileChanges = true;
+        console.log('📋 Email modifié:', { old: currentUser.email, new: updatedUser.email });
+      }
+      if (currentUser.phone !== updatedUser.phone) {
+        profileUpdates.phone_number = updatedUser.phone;
+        hasProfileChanges = true;
+        console.log('📋 Téléphone modifié:', { old: currentUser.phone, new: updatedUser.phone });
+      }
+      if (currentUser.location !== updatedUser.location) {
+        profileUpdates.location = updatedUser.location;
+        hasProfileChanges = true;
+        console.log('📋 Localisation modifiée:', { old: currentUser.location, new: updatedUser.location });
+      }
+      if (currentUser.avatar !== updatedUser.avatar) {
+        profileUpdates.avatar_url = updatedUser.avatar;
+        hasProfileChanges = true;
+        console.log('📋 Avatar modifié:', { old: currentUser.avatar, new: updatedUser.avatar });
+      }
+      
+      if (hasProfileChanges) {
+        console.log('🔄 Profil modifié, mise à jour dans Supabase:', { userId: updatedUser.id, updates: profileUpdates });
+        const { error } = await DataService.updateProfile(String(updatedUser.id), profileUpdates);
+        if (error) {
+          console.error('❌ Erreur Supabase updateProfile:', error);
+          throw error;
         }
-        if (currentUser.email !== updatedUser.email) {
-          profileUpdates.email = updatedUser.email;
-          hasProfileChanges = true;
-        }
-        if (currentUser.phone !== updatedUser.phone) {
-          profileUpdates.phone_number = updatedUser.phone;
-          hasProfileChanges = true;
-        }
-        if (currentUser.location !== updatedUser.location) {
-          profileUpdates.location = updatedUser.location;
-          hasProfileChanges = true;
-        }
-        if (currentUser.avatar !== updatedUser.avatar) {
-          profileUpdates.avatar_url = updatedUser.avatar;
-          hasProfileChanges = true;
-        }
-        
-        if (hasProfileChanges) {
-          console.log('🔄 Profil modifié, mise à jour dans Supabase:', { userId: updatedUser.id, updates: profileUpdates });
-          await DataService.updateProfile(String(updatedUser.id), profileUpdates);
-        }
+        console.log('✅ Profil mis à jour avec succès dans Supabase');
+      } else {
+        console.log('ℹ️ Aucun changement de profil détecté');
       }
       
       // Mise à jour locale
@@ -784,6 +802,8 @@ const App: React.FC = () => {
           ...p,
           team: p.team.map(member => member.id === updatedUser.id ? updatedUser : member)
       })));
+      
+      console.log('✅ handleUpdateUser terminé avec succès');
     } catch (error) {
       console.error('❌ Erreur mise à jour utilisateur:', error);
       alert('Erreur lors de la mise à jour de l\'utilisateur');

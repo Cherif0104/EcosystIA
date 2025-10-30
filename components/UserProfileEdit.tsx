@@ -77,14 +77,10 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onClose, onSave
         email,
         phone: phone || undefined,
         location: location || undefined,
+        avatar: avatarPreview || undefined, // Toujours inclure l'avatar (nouveau ou existant)
       };
 
-      // Si un nouveau fichier avatar est sélectionné, on l'ajoute
-      // Note: Pour l'instant, on garde l'URL preview temporaire
-      // Dans une vraie app, on uploaderait le fichier vers Supabase Storage
-      if (avatarFile) {
-        updatedUser.avatar = avatarPreview;
-      }
+      console.log('🔄 Sauvegarde profil:', { updatedUser });
 
       await onSave(updatedUser);
       onClose();
