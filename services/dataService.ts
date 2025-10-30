@@ -224,6 +224,175 @@ export class DataService {
         console.log('✅ Permissions supprimées');
       }
       
+      // Supprimer les budgets
+      const { error: budgetsError } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('owner_id', profileId);
+      if (budgetsError) {
+        console.error('❌ Erreur suppression budgets:', budgetsError);
+      } else {
+        console.log('✅ Budgets supprimés');
+      }
+      
+      // Supprimer les inscriptions aux cours
+      const { error: enrollmentsError } = await supabase
+        .from('course_enrollments')
+        .delete()
+        .eq('user_id', profileId);
+      if (enrollmentsError) {
+        console.error('❌ Erreur suppression inscriptions cours:', enrollmentsError);
+      } else {
+        console.log('✅ Inscriptions cours supprimées');
+      }
+      
+      // Supprimer les instructeurs de cours
+      const { error: instructorsError } = await supabase
+        .from('course_instructors')
+        .delete()
+        .eq('profile_id', profileId);
+      if (instructorsError) {
+        console.error('❌ Erreur suppression instructeurs:', instructorsError);
+      } else {
+        console.log('✅ Instructeurs supprimés');
+      }
+      
+      // Supprimer les favoris de documents
+      const { error: favoritesError } = await supabase
+        .from('document_favorites')
+        .delete()
+        .eq('user_id', profileId);
+      if (favoritesError) {
+        console.error('❌ Erreur suppression favoris documents:', favoritesError);
+      } else {
+        console.log('✅ Favoris documents supprimés');
+      }
+      
+      // Supprimer les partages de documents
+      const { error: sharesError } = await supabase
+        .from('document_shares')
+        .delete()
+        .or(`shared_by_id.eq.${profileId},shared_with_user_id.eq.${profileId}`);
+      if (sharesError) {
+        console.error('❌ Erreur suppression partages documents:', sharesError);
+      } else {
+        console.log('✅ Partages documents supprimés');
+      }
+      
+      // Supprimer les versions de documents
+      const { error: versionsError } = await supabase
+        .from('document_versions')
+        .delete()
+        .eq('updated_by_id', profileId);
+      if (versionsError) {
+        console.error('❌ Erreur suppression versions documents:', versionsError);
+      } else {
+        console.log('✅ Versions documents supprimées');
+      }
+      
+      // Supprimer les documents créés
+      const { error: documentsError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('created_by_id', profileId);
+      if (documentsError) {
+        console.error('❌ Erreur suppression documents:', documentsError);
+      } else {
+        console.log('✅ Documents supprimés');
+      }
+      
+      // Supprimer les articles de connaissance
+      const { error: articlesError } = await supabase
+        .from('knowledge_articles')
+        .delete()
+        .eq('user_id', profileId);
+      if (articlesError) {
+        console.error('❌ Erreur suppression articles:', articlesError);
+      } else {
+        console.log('✅ Articles supprimés');
+      }
+      
+      // Supprimer les catégories de connaissance
+      const { error: categoriesError } = await supabase
+        .from('knowledge_categories')
+        .delete()
+        .eq('user_id', profileId);
+      if (categoriesError) {
+        console.error('❌ Erreur suppression catégories:', categoriesError);
+      } else {
+        console.log('✅ Catégories supprimées');
+      }
+      
+      // Supprimer les demandes de congé (manager_id aussi)
+      const { error: leaveManagerError } = await supabase
+        .from('leave_requests')
+        .delete()
+        .eq('manager_id', profileId);
+      if (leaveManagerError) {
+        console.error('❌ Erreur suppression demandes congé (manager):', leaveManagerError);
+      } else {
+        console.log('✅ Demandes congé (manager) supprimées');
+      }
+      
+      // Supprimer les réunions (organisateur)
+      const { error: meetingsError } = await supabase
+        .from('meetings')
+        .delete()
+        .eq('organizer_id', profileId);
+      if (meetingsError) {
+        console.error('❌ Erreur suppression réunions:', meetingsError);
+      } else {
+        console.log('✅ Réunions supprimées');
+      }
+      
+      // Supprimer les utilisateurs d'organisation
+      const { error: orgUsersError } = await supabase
+        .from('organization_users')
+        .delete()
+        .or(`user_id.eq.${profileId},invited_by.eq.${profileId}`);
+      if (orgUsersError) {
+        console.error('❌ Erreur suppression org users:', orgUsersError);
+      } else {
+        console.log('✅ Org users supprimés');
+      }
+      
+      // ATTENTION: Ne pas supprimer les profils ayant ce manager_id
+      // car cela supprimerait d'autres utilisateurs !
+      // Mieux vaut modifier leur manager_id à NULL ou à un autre manager
+      
+      // Supprimer les dépenses récurrentes
+      const { error: recurringExpensesError } = await supabase
+        .from('recurring_expenses')
+        .delete()
+        .eq('owner_id', profileId);
+      if (recurringExpensesError) {
+        console.error('❌ Erreur suppression dépenses récurrentes:', recurringExpensesError);
+      } else {
+        console.log('✅ Dépenses récurrentes supprimées');
+      }
+      
+      // Supprimer les factures récurrentes
+      const { error: recurringInvoicesError } = await supabase
+        .from('recurring_invoices')
+        .delete()
+        .eq('owner_id', profileId);
+      if (recurringInvoicesError) {
+        console.error('❌ Erreur suppression factures récurrentes:', recurringInvoicesError);
+      } else {
+        console.log('✅ Factures récurrentes supprimées');
+      }
+      
+      // Supprimer les rôles utilisateur
+      const { error: userRolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .or(`user_id.eq.${profileId},granted_by.eq.${profileId},revoked_by.eq.${profileId}`);
+      if (userRolesError) {
+        console.error('❌ Erreur suppression rôles utilisateur:', userRolesError);
+      } else {
+        console.log('✅ Rôles utilisateur supprimés');
+      }
+      
       // Maintenant supprimer le profil
       const { error } = await supabase
         .from('profiles')
