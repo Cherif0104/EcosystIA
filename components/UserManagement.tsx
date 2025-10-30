@@ -94,10 +94,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [deletingUserId, setDeletingUserId] = useState<string | number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all'); // all, active, inactive
     const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'super_admin'>('users');
+    
+    // Rôles protégés contre la suppression
+    const PROTECTED_ROLES: Role[] = ['super_administrator', 'administrator', 'manager'];
 
     // Realtime subscription pour les profils
     useEffect(() => {
@@ -204,20 +208,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     };
 
     const handleDelete = async (user: User) => {
+        // Vérifier si l'utilisateur a un rôle protégé
+        if (PROTECTED_ROLES.includes(user.role as Role)) {
+            alert(`Impossible de supprimer les rôles d'administration (${user.role}). Ces rôles sont protégés pour maintenir la sécurité de la plateforme.`);
+            return;
+        }
+        
         setDeletingUserId(user.id);
     };
 
     const confirmDeleteUser = async () => {
         if (!deletingUserId || !onDeleteUser) return;
         
+        setIsDeleting(true);
         try {
             await onDeleteUser(deletingUserId);
             console.log('✅ Utilisateur supprimé avec succès');
             setDeletingUserId(null);
+            
+            // Attendre un peu pour que la mise à jour soit visible
+            setTimeout(() => {
+                setIsDeleting(false);
+            }, 500);
         } catch (error: any) {
             console.error('❌ Erreur suppression utilisateur:', error);
             const errorMessage = error?.message || 'Erreur inconnue lors de la suppression';
             alert(`Erreur lors de la suppression de l'utilisateur : ${errorMessage}`);
+            setIsDeleting(false);
+            setDeletingUserId(null);
         }
     };
 
@@ -481,7 +499,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                                     </button>
                                                     <button 
                                                         onClick={() => handleDelete(user)} 
-                                                        className="font-medium text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors"
+                                                        disabled={PROTECTED_ROLES.includes(user.role as Role)}
+                                                        className={`font-medium text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors ${PROTECTED_ROLES.includes(user.role as Role) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        title={PROTECTED_ROLES.includes(user.role as Role) ? 'Impossible de supprimer les rôles d\'administration' : ''}
                                                     >
                                                         <i className="fas fa-trash mr-2"></i>
                                                         Supprimer
@@ -530,6 +550,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                     confirmText="Supprimer"
                     cancelText="Annuler"
                     confirmButtonClass="bg-red-600 hover:bg-red-700"
+                    isLoading={isDeleting}
                 />
             )}
         </div>
