@@ -5,6 +5,7 @@ import { User, Role } from '../types';
 import UserModulePermissions from './UserModulePermissions';
 import CreateSuperAdmin from './CreateSuperAdmin';
 import UserProfileEdit from './UserProfileEdit';
+import ConfirmationModal from './common/ConfirmationModal';
 import { RealtimeService } from '../services/realtimeService';
 import { supabase } from '../services/supabaseService';
 
@@ -92,6 +93,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isProfileModalOpen, setProfileModalOpen] = useState(false);
     const [profileUser, setProfileUser] = useState<User | null>(null);
+    const [deletingUserId, setDeletingUserId] = useState<string | number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all'); // all, active, inactive
@@ -202,22 +204,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     };
 
     const handleDelete = async (user: User) => {
-        if (!window.confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name || user.email}" ? Cette action est irréversible.`)) {
-            return;
-        }
+        setDeletingUserId(user.id);
+    };
+
+    const confirmDeleteUser = async () => {
+        if (!deletingUserId || !onDeleteUser) return;
         
-        if (onDeleteUser) {
-            try {
-                await onDeleteUser(user.id);
-                // Optionnel : afficher un message de succès
-                console.log('✅ Utilisateur supprimé avec succès');
-            } catch (error) {
-                console.error('❌ Erreur suppression utilisateur:', error);
-                alert('Erreur lors de la suppression de l\'utilisateur');
-            }
-        } else {
-            // Fallback: suppression locale uniquement (à éviter en production)
-            console.warn('⚠️ Suppression locale uniquement - onDeleteUser non fourni');
+        try {
+            await onDeleteUser(deletingUserId);
+            console.log('✅ Utilisateur supprimé avec succès');
+            setDeletingUserId(null);
+        } catch (error) {
+            console.error('❌ Erreur suppression utilisateur:', error);
+            alert('Erreur lors de la suppression de l\'utilisateur');
         }
     };
 
@@ -518,6 +517,18 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                     user={profileUser}
                     onClose={() => setProfileModalOpen(false)}
                     onSave={handleSaveProfile}
+                />
+            )}
+
+            {deletingUserId && (
+                <ConfirmationModal
+                    title="Supprimer l'utilisateur"
+                    message={`Êtes-vous sûr de vouloir supprimer l'utilisateur "${users.find(u => u.id === deletingUserId)?.name || users.find(u => u.id === deletingUserId)?.email}" ? Cette action est irréversible.`}
+                    onConfirm={confirmDeleteUser}
+                    onCancel={() => setDeletingUserId(null)}
+                    confirmText="Supprimer"
+                    cancelText="Annuler"
+                    confirmButtonClass="bg-red-600 hover:bg-red-700"
                 />
             )}
         </div>
