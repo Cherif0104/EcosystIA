@@ -329,10 +329,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                 <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
                                     <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap flex items-center">
                                                     {user.avatar && !user.avatar.startsWith('data:image') ? (
-                                                        <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full mr-3 object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }}/>
+                                                        <img src={user.avatar} alt={user.name || 'Utilisateur'} className="w-8 h-8 rounded-full mr-3 object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }}/>
                                                     ) : (
                                                         <div className="w-8 h-8 rounded-full mr-3 bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                                                            {user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                            {(user.name || 'U').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                         </div>
                                                     )}
                                         {user.name}
