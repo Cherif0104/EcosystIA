@@ -475,11 +475,47 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
                             type="button"
                             onClick={() => {
                               const newValue = !modulePerms.canRead;
-                              handlePermissionChange(module, 'canRead', newValue);
-                              if (!newValue) {
-                                handlePermissionChange(module, 'canWrite', false);
-                                handlePermissionChange(module, 'canDelete', false);
-                                handlePermissionChange(module, 'canApprove', false);
+                              
+                              // Mettre à jour toutes les permissions en une seule fois
+                              const updatedPermissions = {
+                                ...permissions,
+                                [module]: {
+                                  canRead: newValue,
+                                  canWrite: newValue ? permissions[module].canWrite : false,
+                                  canDelete: newValue ? permissions[module].canDelete : false,
+                                  canApprove: newValue ? permissions[module].canApprove : false
+                                }
+                              };
+                              setPermissions(updatedPermissions);
+
+                              // Sauvegarde avec debounce
+                              if (saveTimeout) {
+                                clearTimeout(saveTimeout);
+                              }
+
+                              if (selectedUser && selectedUser.profileId) {
+                                const timeout = setTimeout(async () => {
+                                  setIsSaving(true);
+                                  try {
+                                    const payload = Object.entries(updatedPermissions).map(([modName, perms]) => ({
+                                      moduleName: modName,
+                                      canRead: perms.canRead,
+                                      canWrite: perms.canWrite,
+                                      canDelete: perms.canDelete,
+                                      canApprove: perms.canApprove
+                                    }));
+                                    
+                                    await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
+                                  } catch (error) {
+                                    console.error('❌ Erreur sauvegarde automatique:', error);
+                                    setPermissions(permissions);
+                                    alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+                                  } finally {
+                                    setIsSaving(false);
+                                  }
+                                }, 500);
+                                
+                                setSaveTimeout(timeout);
                               }
                             }}
                             className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
