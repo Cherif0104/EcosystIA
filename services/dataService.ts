@@ -125,11 +125,17 @@ export class DataService {
         .from('profiles')
         .select('*')
         .eq('user_id', userIdStr)
-        .single();
+        .maybeSingle();
       
-      if (checkError || !existingUser) {
-        console.error('❌ Erreur: Utilisateur non trouvé dans profiles:', userIdStr);
-        throw new Error('Utilisateur non trouvé');
+      if (checkError) {
+        console.error('❌ Erreur lors de la recherche de l\'utilisateur:', checkError);
+        throw checkError;
+      }
+      
+      if (!existingUser) {
+        console.warn('⚠️ Utilisateur non trouvé dans profiles:', userIdStr, '- Peut-être déjà supprimé');
+        // Retourner success: true car l'objectif (suppression) est atteint
+        return { success: true, error: null };
       }
       
       console.log('✅ Utilisateur trouvé:', existingUser.email, existingUser.full_name);
