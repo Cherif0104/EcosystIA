@@ -15,14 +15,14 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onClose, onSave
   
   // États pour les champs du formulaire
   const [firstName, setFirstName] = useState(() => {
-    const parts = user.name.split(' ');
-    return parts.slice(0, -1).join(' '); // Tout sauf le dernier mot (prénom)
+    const nameParts = (user.name || '').split(' ');
+    return nameParts.slice(0, -1).join(' '); // Tout sauf le dernier mot (prénom)
   });
   const [lastName, setLastName] = useState(() => {
-    const parts = user.name.split(' ');
-    return parts[parts.length - 1] || ''; // Dernier mot (nom)
+    const nameParts = (user.name || '').split(' ');
+    return nameParts[nameParts.length - 1] || ''; // Dernier mot (nom)
   });
-  const [email, setEmail] = useState(user.email);
+  const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [location, setLocation] = useState(user.location || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
