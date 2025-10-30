@@ -5,6 +5,7 @@ import NexusFlowIcon from './icons/NexusFlowIcon';
 import { Role } from '../types';
 import AuthAIAssistant from './AuthAIAssistant';
 import { AuthService } from '../services/authService';
+import { logger } from '../services/loggerService';
 
 const PasswordStrengthMeter: React.FC<{ password?: string }> = ({ password = '' }) => {
     const { t } = useLocalization();
@@ -122,10 +123,12 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
     setLoading(true);
     setError('');
 
+    logger.logAuth('Tentative inscription', { email, role });
     const result = await signUp(email, password, name, phone, role);
     
     if (!result.success) {
       const errorMessage = result.error?.message || 'Erreur lors de l\'inscription';
+      logger.error('auth', 'Erreur inscription', result.error);
       
       // Messages d'erreur plus clairs
       if (errorMessage.includes('Email address') && errorMessage.includes('invalid')) {
@@ -137,8 +140,14 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
       }
     } else {
       // Inscription réussie
+      logger.logAuth('Inscription réussie', { email });
+      logger.info('navigation', 'Redirection vers login après inscription');
+      
       if (onSignupSuccess) {
+        logger.debug('state', 'Calling onSignupSuccess callback');
         onSignupSuccess();
+      } else {
+        logger.warn('auth', 'onSignupSuccess callback not defined - may cause white page');
       }
     }
     

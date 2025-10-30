@@ -6,6 +6,7 @@ import { Course, Job, Project, Objective, Contact, Document, User, Role, TimeLog
 import { useLocalization } from './contexts/LocalizationContext';
 import DataAdapter from './services/dataAdapter';
 import DataService from './services/dataService';
+import { logger } from './services/loggerService';
 
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -72,11 +73,14 @@ const App: React.FC = () => {
 
   // Handler pour setView qui persiste dans localStorage
   const handleSetView = (view: string) => {
+    logger.logNavigation(currentView, view, 'handleSetView');
+    logger.debug('state', `Setting currentView: ${currentView} → ${view}`);
     setCurrentView(view);
     
     // Persister la vue sauf pour login/signup
     if (view !== 'login' && view !== 'signup') {
       localStorage.setItem('lastView', view);
+      logger.debug('session', `Persisted view to localStorage: ${view}`);
     }
     
     // Gérer le selectedCourseId
@@ -93,21 +97,30 @@ const App: React.FC = () => {
   // Initialisation avec protection de routes
   useEffect(() => {
     const initializeApp = async () => {
+      const startTime = Date.now();
+      logger.info('auth', '🔄 Initialisation de l\'application');
+      logger.debug('session', 'Checking authentication state');
+      
       try {
         // Vérifier l'authentification
         const isAuthenticated = await authGuard.checkAuth();
         
         if (isAuthenticated) {
+          logger.logAuth('Utilisateur authentifié', { isAuthenticated });
           console.log('✅ Utilisateur authentifié - accès autorisé');
           // L'utilisateur reste sur la page actuelle (pas de redirection)
         } else {
+          logger.logAuth('Utilisateur NON authentifié - redirection vers login', { isAuthenticated });
+          logger.logNavigation(currentView, 'login', 'Not authenticated');
           console.log('🔒 Utilisateur non authentifié - redirection vers login');
           // Ne pas utiliser handleSetView ici car on est en train d'initialiser
           setCurrentView('login');
         }
         
         setIsInitialized(true);
+        logger.logPerformance('App initialization', Date.now() - startTime);
       } catch (error) {
+        logger.error('auth', 'Erreur initialisation app', error, error as Error);
         console.error('Erreur initialisation app:', error);
         // Ne pas utiliser handleSetView ici car on est en train d'initialiser
         setCurrentView('login');
