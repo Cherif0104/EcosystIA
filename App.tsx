@@ -733,13 +733,27 @@ const App: React.FC = () => {
 
 
   // USERS
-  const handleUpdateUser = (updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    // Also update user in project teams if they are part of any
-    setProjects(prevProjects => prevProjects.map(p => ({
-        ...p,
-        team: p.team.map(member => member.id === updatedUser.id ? updatedUser : member)
-    })));
+  const handleUpdateUser = async (updatedUser: User) => {
+    try {
+      // Si le rôle a changé, mettre à jour dans Supabase
+      const currentUser = users.find(u => u.id === updatedUser.id);
+      if (currentUser && currentUser.role !== updatedUser.role) {
+        console.log('🔄 Rôle modifié, mise à jour dans Supabase:', { userId: updatedUser.id, newRole: updatedUser.role });
+        await DataService.updateUserRole(String(updatedUser.id), updatedUser.role);
+      }
+      
+      // Mise à jour locale
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+      
+      // Also update user in project teams if they are part of any
+      setProjects(prevProjects => prevProjects.map(p => ({
+          ...p,
+          team: p.team.map(member => member.id === updatedUser.id ? updatedUser : member)
+      })));
+    } catch (error) {
+      console.error('❌ Erreur mise à jour utilisateur:', error);
+      alert('Erreur lors de la mise à jour de l\'utilisateur');
+    }
   };
 
   const handleToggleActive = async (userId: string | number, isActive: boolean) => {

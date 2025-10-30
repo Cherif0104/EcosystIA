@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { User, Role } from '../types';
 import UserModulePermissions from './UserModulePermissions';
 import CreateSuperAdmin from './CreateSuperAdmin';
 import UserProfileEdit from './UserProfileEdit';
+import { RealtimeService } from '../services/realtimeService';
+import { supabase } from '../services/supabaseService';
 
 const UserEditModal: React.FC<{
     user: User;
@@ -91,7 +93,56 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all'); // all, active, inactive
     const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'super_admin'>('users');
+
+    // Realtime subscription pour les profils
+    useEffect(() => {
+        const channel = supabase
+            .channel('profiles-changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'profiles'
+            }, (payload) => {
+                console.log('🔄 Changement Realtime profiles:', payload.eventType, payload.new);
+                
+                // Mettre à jour la liste des utilisateurs
+                if (payload.eventType === 'UPDATE' && payload.new) {
+                    const updatedProfile = payload.new as any;
+                    const userToUpdate = users.find(u => {
+                        // Vérifier si c'est le même utilisateur (user_id ou id)
+                        return String(u.id) === String(updatedProfile.user_id) || String(u.id) === String(updatedProfile.id);
+                    });
+                    
+                    if (userToUpdate) {
+                        const updatedUser: User = {
+                            ...userToUpdate,
+                            role: updatedProfile.role as Role,
+                            isActive: updatedProfile.is_active ?? true,
+                            name: updatedProfile.full_name,
+                            fullName: updatedProfile.full_name,
+                            email: updatedProfile.email,
+                            avatar: updatedProfile.avatar_url || '',
+                            phone: updatedProfile.phone_number || '',
+                            phoneNumber: updatedProfile.phone_number || '',
+                            location: updatedProfile.location || '',
+                            skills: updatedProfile.skills || [],
+                            bio: updatedProfile.bio || '',
+                            lastLogin: updatedProfile.last_login || userToUpdate.lastLogin,
+                            createdAt: updatedProfile.created_at || userToUpdate.createdAt,
+                            updatedAt: updatedProfile.updated_at || userToUpdate.updatedAt
+                        };
+                        onUpdateUser(updatedUser);
+                    }
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [users, onUpdateUser]);
 
     const handleEdit = (userToEdit: User) => {
         setSelectedUser(userToEdit);
@@ -141,9 +192,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
             
             const matchesRole = roleFilter === 'all' || user.role === roleFilter;
             
-            return matchesSearch && matchesRole;
+            const matchesStatus = statusFilter === 'all' || 
+                (statusFilter === 'active' && user.isActive !== false) ||
+                (statusFilter === 'inactive' && user.isActive === false);
+            
+            return matchesSearch && matchesRole && matchesStatus;
         });
-    }, [users, searchQuery, roleFilter]);
+    }, [users, searchQuery, roleFilter, statusFilter]);
 
     // Métriques
     const totalUsers = users.length;
@@ -292,6 +347,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                     <option value="intern">Stagiaire</option>
                                     <option value="student">Étudiant</option>
                                     <option value="employer">Employeur</option>
+                                </select>
+
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                >
+                                    <option value="all">Tous les statuts</option>
+                                    <option value="active">Actifs</option>
+                                    <option value="inactive">Inactifs</option>
                                 </select>
                             </div>
 

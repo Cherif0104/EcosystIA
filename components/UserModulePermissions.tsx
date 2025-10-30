@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { useModulePermissions } from '../hooks/useModulePermissions';
+import { DataService } from '../services/dataService';
 import { User, ModuleName } from '../types';
 
 interface UserModulePermissionsProps {
@@ -61,8 +62,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
   const handleUserSelect = async (userId: string | number) => {
     setSelectedUserId(userId);
     
-    // TODO: Charger les permissions depuis Supabase
-    // Pour l'instant, initialiser avec valeurs par défaut basées sur le rôle
+    // Charger les permissions depuis Supabase, fallback sur défauts
     const selectedUser = users.find(u => u.id === userId);
     
     if (!selectedUser) {
@@ -79,39 +79,28 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
       return;
     }
     
-    // Initialiser les permissions selon le rôle de l'utilisateur
     const defaultPermissions: Record<ModuleName, any> = {} as any;
     Object.keys(moduleDisplayNames).forEach(moduleName => {
-      const module = moduleName as ModuleName;
-      const isUserAdmin = selectedUser.role === 'administrator' || selectedUser.role === 'super_administrator' || selectedUser.role === 'manager';
-      
-      // Permissions par défaut selon le rôle
-      if (['dashboard', 'projects', 'goals_okrs', 'time_tracking', 'leave_management', 'finance', 'knowledge_base', 'courses', 'jobs', 'ai_coach', 'gen_ai_lab', 'settings'].includes(moduleName)) {
-        // Tous les utilisateurs ont accès à ces modules par défaut
-        defaultPermissions[module] = {
-          canRead: true,
-          canWrite: true,
-          canDelete: false,
-          canApprove: false
-        };
-      } else if (['crm_sales', 'analytics', 'talent_analytics', 'user_management', 'course_management', 'job_management', 'leave_management_admin'].includes(moduleName)) {
-        // Seulement pour les admins/manager
-        defaultPermissions[module] = {
-          canRead: isUserAdmin,
-          canWrite: isUserAdmin,
-          canDelete: isUserAdmin,
-          canApprove: isUserAdmin
-        };
-      } else {
-        defaultPermissions[module] = {
-          canRead: false,
-          canWrite: false,
-          canDelete: false,
-          canApprove: false
-        };
-      }
+      defaultPermissions[moduleName as ModuleName] = {
+        canRead: false, canWrite: false, canDelete: false, canApprove: false
+      };
     });
-    
+
+    try {
+      const { data } = await DataService.getUserModulePermissions(String(userId));
+      if (Array.isArray(data) && data.length > 0) {
+        data.forEach((row: any) => {
+          const m = row.module_name as ModuleName;
+          defaultPermissions[m] = {
+            canRead: !!row.can_read,
+            canWrite: !!row.can_write,
+            canDelete: !!row.can_delete,
+            canApprove: !!row.can_approve
+          };
+        });
+      }
+    } catch {}
+
     setPermissions(defaultPermissions);
   };
 
@@ -129,8 +118,14 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     if (!selectedUser) return;
     
     try {
-      // TODO: Sauvegarder les permissions dans Supabase
-      console.log('💾 Sauvegarde des permissions pour:', selectedUser.name, permissions);
+      const payload = Object.entries(permissions).map(([moduleName, perms]) => ({
+        moduleName,
+        canRead: perms.canRead,
+        canWrite: perms.canWrite,
+        canDelete: perms.canDelete,
+        canApprove: perms.canApprove
+      }));
+      await DataService.upsertUserModulePermissions(String(selectedUser.id), payload);
       alert('Permissions sauvegardées avec succès !');
     } catch (error) {
       console.error('❌ Erreur sauvegarde permissions:', error);

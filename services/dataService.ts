@@ -53,6 +53,34 @@ export class DataService {
     }
   }
 
+  // Mettre à jour le rôle d'un utilisateur
+  static async updateUserRole(userId: string, newRole: string) {
+    try {
+      console.log('🔄 Update user role:', { userId, newRole });
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ 
+          role: newRole,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('❌ Erreur update user role:', error);
+        throw error;
+      }
+      
+      console.log('✅ User role updated:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Erreur update user role:', error);
+      return { data: null, error };
+    }
+  }
+
   // Fonction pour activer/désactiver un utilisateur
   static async toggleUserActive(userId: string | number, isActive: boolean) {
     try {
@@ -103,6 +131,35 @@ export class DataService {
       return { data, error: null };
     } catch (error) {
       console.error('❌ Erreur get user module permissions:', error);
+      return { data: null, error };
+    }
+  }
+
+  // Upsert des permissions module pour un utilisateur
+  static async upsertUserModulePermissions(userId: string, perms: Array<{ moduleName: string; canRead: boolean; canWrite: boolean; canDelete: boolean; canApprove: boolean }>) {
+    try {
+      console.log('💾 Upsert user module permissions:', { userId, count: perms.length });
+      if (!userId || !Array.isArray(perms)) throw new Error('Paramètres invalides');
+
+      const rows = perms.map(p => ({
+        user_id: userId,
+        module_name: p.moduleName,
+        can_read: p.canRead,
+        can_write: p.canWrite,
+        can_delete: p.canDelete,
+        can_approve: p.canApprove,
+        updated_at: new Date().toISOString()
+      }));
+
+      const { data, error } = await supabase
+        .from('user_module_permissions')
+        .upsert(rows, { onConflict: 'user_id,module_name' })
+        .select();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Erreur upsert user module permissions:', error);
       return { data: null, error };
     }
   }

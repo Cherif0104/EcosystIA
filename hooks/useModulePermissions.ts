@@ -13,15 +13,35 @@ export const useModulePermissions = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    // Pour l'instant, utilisons uniquement les permissions par défaut basées sur le rôle
-    // TODO: Implémenter le chargement des permissions personnalisées depuis Supabase
-    setPermissions(getDefaultPermissions(user.role));
-    setLoading(false);
+    const load = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        // Charger d'abord les permissions par défaut
+        let effective = getDefaultPermissions(user.role);
+        // Puis surcharger avec les permissions Supabase si existantes
+        const { data, error } = await DataService.getUserModulePermissions(String(user.id));
+        if (!error && Array.isArray(data) && data.length > 0) {
+          data.forEach((row: any) => {
+            const moduleName = row.module_name as ModuleName;
+            effective[moduleName] = {
+              canRead: !!row.can_read,
+              canWrite: !!row.can_write,
+              canDelete: !!row.can_delete,
+              canApprove: !!row.can_approve
+            } as ModulePermission;
+          });
+        }
+        setPermissions(effective);
+      } catch (e) {
+        setPermissions(getDefaultPermissions(user.role));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [user]);
 
   // Fonction pour vérifier si l'utilisateur a une permission spécifique
