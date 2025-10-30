@@ -26,6 +26,11 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, setView, notifications, 
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  // Si pas d'utilisateur, ne pas afficher le header
+  if (!user) {
+    return null;
+  }
+
   return (
     <header className="bg-white shadow-md sticky top-0 z-40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">

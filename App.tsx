@@ -43,7 +43,11 @@ const App: React.FC = () => {
   
   // Récupérer la vue précédente depuis localStorage (pour éviter le flash au refresh)
   const savedView = typeof window !== 'undefined' ? localStorage.getItem('lastView') : null;
-  const [currentView, setCurrentView] = useState(savedView || 'dashboard');
+  // Valider que la vue sauvegardée est valide (pas login/signup)
+  const validInitialView = savedView && savedView !== 'login' && savedView !== 'signup' ? savedView : 'dashboard';
+  const [currentView, setCurrentView] = useState(validInitialView);
+  
+  logger.info('session', `Initial view from localStorage: ${savedView}, using: ${validInitialView}`);
   
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -274,6 +278,18 @@ const App: React.FC = () => {
     loadData();
   }, [isInitialized, user]); // Retirer isDataLoaded des dépendances
 
+  // Redirection automatique après authentification réussie
+  useEffect(() => {
+    if (!isInitialized || !user) return;
+    
+    // Si on est sur login/signup et qu'on a un user, rediriger vers dashboard
+    if ((currentView === 'login' || currentView === 'signup')) {
+      logger.logNavigation(currentView, 'dashboard', 'User authenticated');
+      logger.info('auth', 'Redirigé vers dashboard après authentification');
+      setCurrentView('dashboard');
+    }
+  }, [user, isInitialized, currentView]);
+
   // Protection de routes - rediriger vers login si non authentifié
   useEffect(() => {
     if (!isInitialized) return;
@@ -282,6 +298,7 @@ const App: React.FC = () => {
       // Rediriger vers login seulement si l'utilisateur n'est pas connecté ET qu'on n'est pas déjà sur login/signup
       if (!user && currentView !== 'login' && currentView !== 'signup') {
         console.log('🔒 Protection route - redirection vers login');
+        logger.logNavigation(currentView, 'login', 'Not authenticated - route protection');
         setCurrentView('login');
         setIsDataLoaded(false);
       }
@@ -422,13 +439,15 @@ const App: React.FC = () => {
   if (!user) {
     if (authView === 'signup') {
         return <Signup onSwitchToLogin={() => setAuthView('login')} onSignupSuccess={() => {
-          // TOUJOURS rediriger vers dashboard après inscription
-          handleSetView('dashboard');
+          logger.debug('state', 'onSignupSuccess called - waiting for user state update');
+          logger.logNavigation('signup', 'waiting for auth', 'Signup success callback');
+          // Attendre que le user soit mis à jour automatiquement - ne pas rediriger ici
         }} />;
     }
     return <Login onSwitchToSignup={() => setAuthView('signup')} onLoginSuccess={() => {
-      // TOUJOURS rediriger vers dashboard après connexion
-      handleSetView('dashboard');
+      logger.debug('state', 'onLoginSuccess called - waiting for user state update');
+      logger.logNavigation('login', 'waiting for auth', 'Login success callback');
+      // Attendre que le user soit mis à jour automatiquement - ne pas rediriger ici
     }} />;
   }
 
