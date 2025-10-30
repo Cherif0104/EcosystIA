@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { User, Role } from '../types';
+import UserModulePermissions from './UserModulePermissions';
+import CreateSuperAdmin from './CreateSuperAdmin';
+import UserProfileEdit from './UserProfileEdit';
 
 const UserEditModal: React.FC<{
     user: User;
@@ -76,17 +79,28 @@ const UserEditModal: React.FC<{
 interface UserManagementProps {
     users: User[];
     onUpdateUser: (user: User) => void;
+    onToggleActive?: (userId: string | number, isActive: boolean) => void;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, onToggleActive }) => {
     const { t } = useLocalization();
     const { user: currentUser } = useAuth();
     const [isModalOpen, setModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isProfileModalOpen, setProfileModalOpen] = useState(false);
+    const [profileUser, setProfileUser] = useState<User | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [roleFilter, setRoleFilter] = useState<string>('all');
+    const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'super_admin'>('users');
 
     const handleEdit = (userToEdit: User) => {
         setSelectedUser(userToEdit);
         setModalOpen(true);
+    };
+
+    const handleEditProfile = (userToEdit: User) => {
+        setProfileUser(userToEdit);
+        setProfileModalOpen(true);
     };
     
     const handleSaveRole = (userId: number, newRole: Role) => {
@@ -98,50 +112,306 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser }) 
         setSelectedUser(null);
     };
 
-    if (currentUser?.role !== 'super_administrator') {
-        return <div>Access Denied</div>;
+    const handleSaveProfile = async (updatedUser: Partial<User>) => {
+        if (!profileUser) return;
+        const userToUpdate = { ...profileUser, ...updatedUser };
+        onUpdateUser(userToUpdate);
+        setProfileModalOpen(false);
+        setProfileUser(null);
+    };
+
+    const handleToggleActive = (user: User) => {
+        if (window.confirm(`Voulez-vous ${user.isActive !== false ? 'désactiver' : 'activer'} ${user.name} ?`)) {
+            const newActiveState = !(user.isActive !== false);
+            if (onToggleActive) {
+                onToggleActive(user.id, newActiveState);
+            } else {
+                // Fallback: mise à jour locale
+                onUpdateUser({...user, isActive: newActiveState});
+            }
+        }
+    };
+
+    // Filtres des utilisateurs
+    const filteredUsers = useMemo(() => {
+        return users.filter(user => {
+            const matchesSearch = searchQuery === '' ||
+                user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+            
+            return matchesSearch && matchesRole;
+        });
+    }, [users, searchQuery, roleFilter]);
+
+    // Métriques
+    const totalUsers = users.length;
+    const activeUsers = users.filter(u => u.isActive !== false).length;
+    const adminUsers = users.filter(u => u.role === 'administrator' || u.role === 'super_administrator').length;
+    const staffUsers = users.filter(u => ['manager', 'supervisor', 'intern'].includes(u.role)).length;
+
+    if (!currentUser) return null;
+
+    const hasAccess = currentUser.role === 'administrator' || currentUser.role === 'super_administrator' || currentUser.role === 'manager';
+
+    if (!hasAccess) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="bg-white rounded-xl shadow-lg p-12 text-center max-w-md">
+                    <i className="fas fa-lock text-6xl text-red-500 mb-4"></i>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Accès Refusé</h2>
+                    <p className="text-gray-600">Vous n'avez pas les permissions nécessaires pour accéder à ce module.</p>
+                </div>
+            </div>
+        );
     }
 
     return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header avec gradient */}
+            <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="flex items-center justify-between">
         <div>
-            <h1 className="text-3xl font-bold text-gray-800">{t('user_management')}</h1>
-            <p className="mt-1 text-gray-600">{t('user_management_subtitle')}</p>
+                            <h1 className="text-4xl font-bold mb-2">Gestion des Utilisateurs</h1>
+                            <p className="text-emerald-50 text-sm">
+                                Gérez les utilisateurs, leurs rôles et leurs accès à la plateforme
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <div className="mt-8 bg-white rounded-lg shadow-lg">
-                <div className="overflow-x-auto">
+            {/* Métriques Power BI style */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 mb-8">
+                {/* Onglets */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 mb-6">
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => setActiveTab('users')}
+                            className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'users'
+                                    ? 'bg-emerald-600 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <i className="fas fa-users mr-2"></i>
+                            Utilisateurs
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('permissions')}
+                            className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                activeTab === 'permissions'
+                                    ? 'bg-emerald-600 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <i className="fas fa-shield-alt mr-2"></i>
+                            Permissions Module
+                        </button>
+                        {currentUser?.role === 'super_administrator' && (
+                            <button
+                                onClick={() => setActiveTab('super_admin')}
+                                className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                    activeTab === 'super_admin'
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                }`}
+                            >
+                                <i className="fas fa-user-shield mr-2"></i>
+                                Créer Super Admin
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Métriques */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Total Utilisateurs</span>
+                            <i className="fas fa-users text-2xl text-blue-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Utilisateurs Actifs</span>
+                            <i className="fas fa-user-check text-2xl text-green-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{activeUsers}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Administrateurs</span>
+                            <i className="fas fa-user-shield text-2xl text-purple-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{adminUsers}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Équipe</span>
+                            <i className="fas fa-user-tie text-2xl text-orange-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{staffUsers}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Contenu des onglets */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+                {activeTab === 'users' && (
+                    <>
+                        {/* Barre de recherche et filtres */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                            <div className="flex flex-wrap items-center gap-4">
+                                <div className="flex-1 min-w-[200px]">
+                                    <div className="relative">
+                                        <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                        <input
+                                            type="text"
+                                            placeholder="Rechercher un utilisateur..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <select
+                                    value={roleFilter}
+                                    onChange={(e) => setRoleFilter(e.target.value)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                >
+                                    <option value="all">Tous les rôles</option>
+                                    <option value="super_administrator">Super Admin</option>
+                                    <option value="administrator">Admin</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="supervisor">Supervisor</option>
+                                    <option value="intern">Stagiaire</option>
+                                    <option value="student">Étudiant</option>
+                                    <option value="employer">Employeur</option>
+                                </select>
+                            </div>
+
+                            {/* Compteur de résultats */}
+                            <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-600">
+                                {filteredUsers.length} {filteredUsers.length > 1 ? 'utilisateurs trouvés' : 'utilisateur trouvé'}
+                            </div>
+                        </div>
+
+                        {/* Liste des utilisateurs */}
+                        {filteredUsers.length === 0 ? (
+                            <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+                                <i className="fas fa-users text-6xl text-gray-300 mb-4"></i>
+                                <h3 className="text-xl font-semibold text-gray-800 mb-2">Aucun utilisateur trouvé</h3>
+                                <p className="text-gray-500">
+                                    {searchQuery || roleFilter !== 'all' 
+                                        ? 'Aucun utilisateur ne correspond aux critères de recherche' 
+                                        : 'Aucun utilisateur enregistré'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">{t('name')}</th>
-                                <th scope="col" className="px-6 py-3">{t('email')}</th>
-                                <th scope="col" className="px-6 py-3">{t('role')}</th>
-                                <th scope="col" className="px-6 py-3 text-right">{t('actions')}</th>
+                                            <th scope="col" className="px-6 py-3">Nom</th>
+                                            <th scope="col" className="px-6 py-3">Email</th>
+                                            <th scope="col" className="px-6 py-3">Rôle</th>
+                                            <th scope="col" className="px-6 py-3">Statut</th>
+                                            <th scope="col" className="px-6 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map(user => (
+                                        {filteredUsers.map(user => (
                                 <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
                                     <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap flex items-center">
-                                        <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full mr-3"/>
+                                                    {user.avatar && !user.avatar.startsWith('data:image') ? (
+                                                        <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full mr-3 object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }}/>
+                                                    ) : (
+                                                        <div className="w-8 h-8 rounded-full mr-3 bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                                                            {user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                        </div>
+                                                    )}
                                         {user.name}
                                     </th>
                                     <td className="px-6 py-4">{user.email}</td>
-                                    <td className="px-6 py-4 capitalize">{t(user.role)}</td>
-                                    <td className="px-6 py-4 text-right space-x-4">
-                                        <button onClick={() => handleEdit(user)} className="font-medium text-blue-600 hover:text-blue-800">{t('edit')}</button>
-                                        <button onClick={() => alert('Deactivation feature is not yet implemented.')} className="font-medium text-red-600 hover:text-red-800">{t('deactivate')}</button>
+                                                <td className="px-6 py-4">
+                                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                        {t(user.role)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {user.isActive !== false ? (
+                                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                            Actif
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                            Inactif
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-right space-x-2">
+                                                    <button 
+                                                        onClick={() => handleEditProfile(user)} 
+                                                        className="font-medium text-emerald-600 hover:text-emerald-800 px-3 py-1 rounded hover:bg-emerald-50 transition-colors"
+                                                    >
+                                                        <i className="fas fa-user-edit mr-2"></i>
+                                                        Profil
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleEdit(user)} 
+                                                        className="font-medium text-blue-600 hover:text-blue-800 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
+                                                    >
+                                                        <i className="fas fa-edit mr-2"></i>
+                                                        Rôle
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleToggleActive(user)} 
+                                                        className={`font-medium px-3 py-1 rounded transition-colors ${
+                                                            user.isActive !== false
+                                                                ? 'text-red-600 hover:text-red-800 hover:bg-red-50'
+                                                                : 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                                                        }`}
+                                                    >
+                                                        <i className={`fas fa-${user.isActive !== false ? 'ban' : 'check'} mr-2`}></i>
+                                                        {user.isActive !== false ? 'Désactiver' : 'Activer'}
+                                                    </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+                        )}
+                    </>
+                )}
+
+                {activeTab === 'permissions' && (
+                    <UserModulePermissions users={users} />
+                )}
+
+                {activeTab === 'super_admin' && (
+                    <CreateSuperAdmin />
+                )}
             </div>
+
             {isModalOpen && selectedUser && (
                 <UserEditModal 
                     user={selectedUser}
                     onClose={() => setModalOpen(false)}
                     onSave={handleSaveRole}
+                />
+            )}
+
+            {isProfileModalOpen && profileUser && (
+                <UserProfileEdit 
+                    user={profileUser}
+                    onClose={() => setProfileModalOpen(false)}
+                    onSave={handleSaveProfile}
                 />
             )}
         </div>

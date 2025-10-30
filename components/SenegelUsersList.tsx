@@ -1,17 +1,78 @@
-import React from 'react';
-import { SenegelAuthService } from '../services/senegelAuthService';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../services/supabaseService';
+
+interface SenegelUser {
+  email: string;
+  full_name: string;
+  phone_number: string;
+  role: string;
+}
 
 const SenegelUsersList: React.FC = () => {
-  const users = SenegelAuthService.getSenegelUsersList();
+  const [users, setUsers] = useState<SenegelUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Récupérer tous les utilisateurs depuis la table profiles
+        const { data, error: fetchError } = await supabase
+          .from('profiles')
+          .select('email, full_name, phone_number, role')
+          .order('full_name', { ascending: true });
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        setUsers(data || []);
+      } catch (err: any) {
+        console.error('Erreur chargement utilisateurs:', err);
+        setError(err.message || 'Erreur lors du chargement des utilisateurs');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-gray-500">Chargement des utilisateurs...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">{error}</p>
+      </div>
+    );
+  }
+
+  if (users.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-gray-500">Aucun utilisateur trouvé</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
         <h3 className="text-lg font-semibold text-emerald-800 mb-2">
-          👥 Utilisateurs SENEGEL Natifs
+          👥 Utilisateurs SENEGEL
         </h3>
         <p className="text-sm text-emerald-700">
-          Tous les utilisateurs ci-dessous peuvent se connecter avec le mot de passe universel : <strong>Senegel2024!</strong>
+          Liste des utilisateurs enregistrés dans EcosystIA
         </p>
       </div>
 
@@ -21,7 +82,7 @@ const SenegelUsersList: React.FC = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-semibold text-gray-900">{user.fullName}</h4>
+                  <h4 className="font-semibold text-gray-900">{user.full_name}</h4>
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     user.role === 'super_administrator' ? 'bg-red-100 text-red-800' :
                     user.role === 'administrator' ? 'bg-purple-100 text-purple-800' :
@@ -49,30 +110,15 @@ const SenegelUsersList: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-1">
                   📧 {user.email}
                 </p>
-                <p className="text-sm text-gray-500">
-                  📞 {user.phone}
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-400 mb-1">
-                  Mot de passe
-                </div>
-                <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                  Senegel2024!
-                </div>
+                {user.phone_number && (
+                  <p className="text-sm text-gray-500">
+                    📞 {user.phone_number}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-        <h4 className="font-semibold text-blue-800 mb-2">💡 Instructions de connexion :</h4>
-        <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-          <li>Sélectionnez n'importe quel email de la liste ci-dessus</li>
-          <li>Utilisez le mot de passe universel : <strong>Senegel2024!</strong></li>
-          <li>Cliquez sur "Connexion" pour accéder à EcosystIA</li>
-        </ol>
       </div>
     </div>
   );

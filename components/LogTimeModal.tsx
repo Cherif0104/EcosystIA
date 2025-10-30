@@ -20,18 +20,24 @@ const LogTimeModal: React.FC<LogTimeModalProps> = ({ onClose, onSave, projects, 
   const { t } = useLocalization();
   
   const [entityType, setEntityType] = useState<'project' | 'course' | ''>(initialEntity?.type || '');
-  const [projectId, setProjectId] = useState<number | ''>(initialEntity?.type === 'project' ? Number(initialEntity.id) : '');
-  const [courseId, setCourseId] = useState<number | ''>(initialEntity?.type === 'course' ? Number(initialEntity.id) : '');
+  // Project.id et Course.id sont maintenant tous les deux des strings (UUID)
+  const [projectId, setProjectId] = useState<string | ''>(initialEntity?.type === 'project' ? String(initialEntity.id) : '');
+  const [courseId, setCourseId] = useState<string | ''>(initialEntity?.type === 'course' ? String(initialEntity.id) : '');
   const [taskId, setTaskId] = useState<string | ''>('');
   const [duration, setDuration] = useState(initialValues?.duration || '');
   const [date, setDate] = useState(initialValues?.date || new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState(initialValues?.description || '');
 
-  const selectedProject = projects.find(p => p.id === projectId);
+  const selectedProject = projects.find(p => String(p.id) === String(projectId));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!projectId && !courseId && !initialValues) || !duration) return;
+    
+    // Validation améliorée
+    if (!duration || Number(duration) <= 0) {
+      alert('Veuillez saisir une durée valide');
+      return;
+    }
 
     let entityId: number | string;
     let entityTitle: string;
@@ -43,23 +49,38 @@ const LogTimeModal: React.FC<LogTimeModalProps> = ({ onClose, onSave, projects, 
         entityId = 'meeting';
         entityTitle = description.split('\n')[0]; // Use first line of meeting title
     }
-    else if (entityType === 'project' && selectedProject) {
+    else if (entityType === 'project' && projectId && selectedProject) {
         if (taskId) {
             finalEntityType = 'task';
             entityId = taskId;
             entityTitle = selectedProject.tasks.find(t => t.id === taskId)?.text || 'Unknown Task';
         } else {
             finalEntityType = 'project';
-            entityId = selectedProject.id;
+            entityId = String(selectedProject.id); // Assurer que c'est une string
             entityTitle = selectedProject.title;
         }
     } else if (entityType === 'course' && courseId) {
+        const selectedCourse = courses.find(c => String(c.id) === String(courseId));
+        if (!selectedCourse) {
+          alert('Cours non trouvé');
+          return;
+        }
         finalEntityType = 'course';
-        entityId = courseId;
-        entityTitle = courses.find(c => c.id === courseId)?.title || 'Unknown Course';
+        entityId = String(courseId); // Assurer que c'est une string
+        entityTitle = selectedCourse.title;
     } else {
+        alert('Veuillez sélectionner un projet ou un cours');
         return; // Should not happen
     }
+
+    console.log('🔄 LogTimeModal - Soumission:', {
+      entityType: finalEntityType,
+      entityId,
+      entityTitle,
+      date,
+      duration: Number(duration),
+      description
+    });
 
     onSave({
       entityType: finalEntityType,
@@ -69,6 +90,9 @@ const LogTimeModal: React.FC<LogTimeModalProps> = ({ onClose, onSave, projects, 
       duration: Number(duration),
       description,
     });
+    
+    // Le modal sera fermé par handleSaveLog dans TimeTracking.tsx
+    // Pas besoin de fermer ici pour éviter le double appel
   };
 
   return (
@@ -109,13 +133,17 @@ const LogTimeModal: React.FC<LogTimeModalProps> = ({ onClose, onSave, projects, 
                            <div>
                                 <label className="block text-sm font-medium text-gray-700">{t('select_project')}</label>
                                 <select
-                                    value={projectId}
-                                    onChange={e => {setProjectId(Number(e.target.value)); setTaskId('');}}
+                                    value={projectId || ''}
+                                    onChange={e => {
+                                      setProjectId(e.target.value); 
+                                      setTaskId('');
+                                    }}
                                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                                     disabled={!!initialEntity}
+                                    required={entityType === 'project'}
                                 >
                                     <option value="" disabled>{t('select_project')}</option>
-                                    {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                                    {projects.map(p => <option key={p.id} value={String(p.id)}>{p.title}</option>)}
                                 </select>
                             </div>
                              {selectedProject && selectedProject.tasks.length > 0 && (
@@ -137,10 +165,11 @@ const LogTimeModal: React.FC<LogTimeModalProps> = ({ onClose, onSave, projects, 
                          <div>
                             <label className="block text-sm font-medium text-gray-700">{t('select_course')}</label>
                             <select
-                                value={courseId}
-                                onChange={e => setCourseId(Number(e.target.value))}
+                                value={courseId || ''}
+                                onChange={e => setCourseId(e.target.value || '')}
                                 className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                                 disabled={!!initialEntity}
+                                required={entityType === 'course'}
                             >
                                  <option value="" disabled>{t('select_course')}</option>
                                  {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}

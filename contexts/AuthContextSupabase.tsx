@@ -30,62 +30,60 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Vérifier la session Supabase persistée
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        // Vérifier aussi les sessions SENEGEL stockées dans localStorage
-        const storedSenegelSession = localStorage.getItem('supabase.auth.token');
-        let senegelSession = null;
-        
-        if (storedSenegelSession) {
-          try {
-            senegelSession = JSON.parse(storedSenegelSession);
-            console.log('🇸🇳 Session SENEGEL trouvée dans localStorage:', senegelSession.user?.email);
-          } catch (e) {
-            console.error('Erreur parsing session SENEGEL:', e);
-            localStorage.removeItem('supabase.auth.token');
-          }
-        }
-        
         if (error) {
           console.error('Erreur récupération session:', error);
           setLoading(false);
           return;
         }
 
-        if (session?.user || senegelSession?.user) {
-          const currentUser = session?.user || senegelSession?.user;
-          console.log('✅ Session persistée trouvée:', currentUser.email);
-          console.log('🔍 Détails utilisateur:', {
-            id: currentUser.id,
-            email: currentUser.email,
-            metadata: currentUser.user_metadata
-          });
+        if (session?.user) {
+          console.log('✅ Session persistée trouvée:', session.user.email);
           
-          // Pour les utilisateurs SENEGEL natifs, utiliser les données de session directement
+          // Récupérer le profil depuis la table profiles
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('❌ Erreur récupération profil:', profileError);
+            setUser(null);
+            setProfile(null);
+            setLoading(false);
+            return;
+          }
+
+          // Construire les données utilisateur depuis le profil Supabase
           const userData: User = {
-            id: currentUser.id,
-            email: currentUser.email || '',
-            fullName: currentUser.user_metadata?.full_name || currentUser.email || '',
-            role: currentUser.user_metadata?.role || 'student',
-            avatar: currentUser.user_metadata?.avatar_url || '',
-            phoneNumber: currentUser.user_metadata?.phone_number || '',
-            skills: [],
-            bio: '',
-            location: '',
-            website: '',
-            linkedinUrl: '',
-            githubUrl: '',
-            isActive: true,
-            lastLogin: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            id: session.user.id, // UUID de auth.users.id
+            profileId: profile.id, // UUID de profiles.id (utilisé pour TimeLog.userId)
+            email: profile.email,
+            name: profile.full_name, // Pour compatibilité avec l'ancien code
+            fullName: profile.full_name,
+            role: profile.role as any,
+            avatar: profile.avatar_url || '',
+            phone: profile.phone_number || '',
+            phoneNumber: profile.phone_number || '',
+            skills: profile.skills || [],
+            bio: profile.bio || '',
+            location: profile.location || '',
+            website: profile.website || '',
+            linkedinUrl: profile.linkedin_url || '',
+            githubUrl: profile.github_url || '',
+            isActive: profile.is_active ?? true,
+            lastLogin: profile.last_login || new Date().toISOString(),
+            createdAt: profile.created_at || new Date().toISOString(),
+            updatedAt: profile.updated_at || new Date().toISOString()
           };
           
           const profileData: AuthUser = {
-            id: currentUser.id,
-            email: currentUser.email || '',
-            full_name: currentUser.user_metadata?.full_name || currentUser.email || '',
-            role: currentUser.user_metadata?.role || 'student',
-            avatar_url: currentUser.user_metadata?.avatar_url || '',
-            phone_number: currentUser.user_metadata?.phone_number || ''
+            id: session.user.id,
+            email: profile.email,
+            full_name: profile.full_name,
+            role: profile.role,
+            avatar_url: profile.avatar_url || '',
+            phone_number: profile.phone_number || ''
           };
           
           // Mettre à jour l'état de manière synchrone
@@ -96,7 +94,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           authGuard.startInactivityMonitoring();
           
           console.log('✅ Utilisateur restauré depuis session persistée:', userData.email);
-          console.log('🔍 État utilisateur mis à jour:', { user: userData, profile: profileData });
         } else {
           console.log('ℹ️ Aucune session persistée trouvée');
           // S'assurer que l'état est bien null
@@ -127,14 +124,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (authUser) {
+        // Récupérer le profil complet pour obtenir profileId
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .single();
+
         // Convertir AuthUser en User pour la compatibilité
         const userData: User = {
           id: authUser.id,
+          profileId: profile?.id, // UUID du profil si disponible
           email: authUser.email,
+          name: authUser.full_name, // Pour compatibilité avec l'ancien code
           fullName: authUser.full_name,
           role: authUser.role as any,
           avatar: authUser.avatar_url || '',
-          phoneNumber: '',
+          phone: authUser.phone_number || '',
+          phoneNumber: authUser.phone_number || '',
           skills: [],
           bio: '',
           location: '',

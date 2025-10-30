@@ -1,13 +1,19 @@
 // Helper pour les appels API REST Supabase
+import { supabase } from './supabaseService';
+
 export class ApiHelper {
   private static baseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tdwbqgyubigaurnjzbfv.supabase.co';
   private static apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkd2JxZ3l1YmlnYXVybmp6YmZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5ODA2NzEsImV4cCI6MjA3NjU1NjY3MX0.bmGr3gY0GFeJelVIq8xwZJ6xaZhb-L-SAhn6ypg6zzU';
 
-  // Headers communs pour tous les appels API
-  private static getHeaders() {
+  // Headers communs pour tous les appels API avec authentification utilisateur
+  private static async getHeaders() {
+    // Récupérer le token de session de l'utilisateur connecté
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token || this.apiKey;
+    
     return {
       'apikey': this.apiKey,
-      'Authorization': `Bearer ${this.apiKey}`,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     };
   }
@@ -29,8 +35,9 @@ export class ApiHelper {
 
       console.log(`🔍 API GET: ${url}`);
       
+      const headers = await this.getHeaders();
       const response = await fetch(url, {
-        headers: this.getHeaders()
+        headers
       });
       
       if (!response.ok) {
@@ -53,10 +60,11 @@ export class ApiHelper {
       
       console.log(`🔍 API POST: ${url}`);
       
+      const headers = await this.getHeaders();
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          ...this.getHeaders(),
+          ...headers,
           'Prefer': 'return=representation'
         },
         body: JSON.stringify(payload)
@@ -83,10 +91,11 @@ export class ApiHelper {
       
       console.log(`🔍 API PUT: ${url}`);
       
+      const headers = await this.getHeaders();
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
-          ...this.getHeaders(),
+          ...headers,
           'Prefer': 'return=representation'
         },
         body: JSON.stringify(payload)
@@ -113,9 +122,10 @@ export class ApiHelper {
       
       console.log(`🔍 API DELETE: ${url}`);
       
+      const headers = await this.getHeaders();
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: this.getHeaders()
+        headers
       });
       
       if (!response.ok) {

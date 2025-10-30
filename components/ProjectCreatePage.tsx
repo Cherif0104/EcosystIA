@@ -6,7 +6,7 @@ import TeamSelector from './common/TeamSelector';
 
 interface ProjectCreatePageProps {
     onClose: () => void;
-    onSave: (project: Omit<Project, 'id' | 'tasks' | 'risks'>) => Promise<void>;
+    onSave: (project: Omit<Project, 'id' | 'tasks' | 'risks'> | Project) => Promise<void>;
     users: User[];
     editingProject?: Project | null;
 }
@@ -24,11 +24,29 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
         title: '',
         description: '',
         status: 'Not Started' as 'Not Started' | 'In Progress' | 'Completed' | 'On Hold',
+        startDate: '',
         dueDate: '',
         team: [] as User[]
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Fonction utilitaire pour convertir une date ISO en format yyyy-MM-dd pour les champs input date
+    const formatDateForInput = (dateString?: string): string => {
+        if (!dateString) return '';
+        try {
+            // Si c'est déjà au format yyyy-MM-dd, le retourner tel quel
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                return dateString;
+            }
+            // Sinon, convertir depuis ISO en yyyy-MM-dd
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0];
+        } catch {
+            return '';
+        }
+    };
 
     useEffect(() => {
         if (editingProject) {
@@ -36,9 +54,14 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
                 title: editingProject.title,
                 description: editingProject.description || '',
                 status: editingProject.status,
-                dueDate: editingProject.dueDate || '',
+                startDate: formatDateForInput(editingProject.startDate),
+                dueDate: formatDateForInput(editingProject.dueDate),
                 team: editingProject.team || []
             });
+        } else {
+            // Définir la date de début par défaut à aujourd'hui pour les nouveaux projets
+            const today = new Date().toISOString().split('T')[0];
+            setFormData(prev => ({ ...prev, startDate: today }));
         }
     }, [editingProject]);
 
@@ -74,7 +97,12 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
 
         setIsLoading(true);
         try {
-            await onSave(formData);
+            // Si on est en mode édition, inclure l'ID du projet
+            const projectToSave = editingProject 
+                ? { ...formData, id: editingProject.id, tasks: editingProject.tasks, risks: editingProject.risks }
+                : formData;
+            
+            await onSave(projectToSave as Project | Omit<Project, 'id' | 'tasks' | 'risks'>);
             onClose();
         } catch (error) {
             console.error('Erreur lors de la sauvegarde:', error);
@@ -97,15 +125,15 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header avec bouton de retour */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="fixed inset-0 bg-gray-50 z-50 overflow-y-auto">
+            {/* Header avec bouton de retour - Fixe en haut */}
+            <div className="sticky top-0 bg-white shadow-sm border-b z-10">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center">
                             <button
                                 onClick={onClose}
-                                className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
+                                className="flex items-center text-gray-600 hover:text-gray-900 mr-4 transition-colors"
                             >
                                 <i className="fas fa-arrow-left mr-2"></i>
                                 Retour aux projets
@@ -123,10 +151,10 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
                 </div>
             </div>
 
-            {/* Contenu principal */}
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="bg-white rounded-lg shadow">
-                    <form onSubmit={handleSubmit} className="p-8">
+            {/* Contenu principal - Scrollable */}
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div className="bg-white rounded-lg shadow-lg">
+                    <form onSubmit={handleSubmit} className="p-6">
                         <div className="space-y-8">
                             {/* Informations de base */}
                             <div>
@@ -173,8 +201,8 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
                                         )}
                                     </div>
 
-                                    {/* Statut et Date d'échéance */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Statut et Dates */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div>
                                             <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
                                                 Statut
@@ -185,11 +213,24 @@ const ProjectCreatePage: React.FC<ProjectCreatePageProps> = ({
                                                 onChange={(e) => handleInputChange('status', e.target.value)}
                                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             >
-                                                <option value="Not Started">Pas commencé</option>
+                                                <option value="Not Started">Non démarré</option>
                                                 <option value="In Progress">En cours</option>
                                                 <option value="Completed">Terminé</option>
                                                 <option value="On Hold">En attente</option>
                                             </select>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
+                                                Date de début
+                                            </label>
+                                            <input
+                                                type="date"
+                                                id="startDate"
+                                                value={formData.startDate || ''}
+                                                onChange={(e) => handleInputChange('startDate', e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            />
                                         </div>
 
                                         <div>

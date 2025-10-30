@@ -101,7 +101,22 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, setView, notifications, 
             {/* Profile Dropdown */}
             <div className="relative">
               <button onClick={() => setProfileOpen(!isProfileOpen)} className="flex items-center space-x-2">
-                <img className="h-8 w-8 rounded-full" src={user?.avatar || '/default-avatar.png'} alt={user?.name} />
+                {user?.avatar && !user.avatar.startsWith('data:image') ? (
+                  <img 
+                    className="h-8 w-8 rounded-full border-2 border-emerald-500 object-cover" 
+                    src={user.avatar} 
+                    alt={user?.name}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className={`h-8 w-8 rounded-full border-2 border-emerald-500 bg-gradient-to-br from-emerald-500 via-green-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold ${user?.avatar && !user.avatar.startsWith('data:image') ? 'hidden' : ''}`}
+                >
+                  {user ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                </div>
                 <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name}</span>
               </button>
               {isProfileOpen && (

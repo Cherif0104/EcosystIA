@@ -45,6 +45,23 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
     const [newTaskPriority, setNewTaskPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
     const [newTaskAssignee, setNewTaskAssignee] = useState<string>('');
 
+    // Fonction utilitaire pour convertir une date ISO en format yyyy-MM-dd pour les champs input date
+    const formatDateForInput = (dateString?: string): string => {
+        if (!dateString) return '';
+        try {
+            // Si c'est déjà au format yyyy-MM-dd, le retourner tel quel
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                return dateString;
+            }
+            // Sinon, convertir depuis ISO en yyyy-MM-dd
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0];
+        } catch {
+            return '';
+        }
+    };
+
     useEffect(() => {
         setCurrentProject(project);
         loadProjectReports();
@@ -164,6 +181,35 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
         
         setCurrentProject(updatedProject);
         onUpdateProject(updatedProject);
+    };
+
+    const handleAddTask = () => {
+        if (!newTaskText.trim()) return;
+        
+        const newTask = {
+            id: `task-${Date.now()}`,
+            text: newTaskText,
+            status: 'To Do' as const,
+            priority: newTaskPriority,
+            dueDate: newTaskDueDate || undefined,
+            assignee: newTaskAssignee ? currentProject.team?.find(m => m.id === newTaskAssignee) : undefined,
+            estimatedHours: 8,
+            loggedHours: 0
+        };
+
+        const updatedProject = {
+            ...currentProject,
+            tasks: [...(currentProject.tasks || []), newTask]
+        };
+        
+        setCurrentProject(updatedProject);
+        onUpdateProject(updatedProject);
+        
+        // Reset form
+        setNewTaskText('');
+        setNewTaskDueDate('');
+        setNewTaskPriority('Medium');
+        setNewTaskAssignee('');
     };
 
     const handleDeleteTask = (taskId: string) => {
@@ -592,31 +638,84 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
         }
     };
 
+    const getStatusColor = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case 'completed':
+                return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'in progress':
+                return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'on hold':
+                return 'bg-amber-100 text-amber-800 border-amber-200';
+            default:
+                return 'bg-gray-100 text-gray-800 border-gray-200';
+        }
+    };
+
+    const totalTasks = (currentProject.tasks || []).length;
+    const completedTasks = (currentProject.tasks || []).filter(t => t.status === 'Completed').length;
+    const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const totalEstimatedHours = (currentProject.tasks || []).reduce((sum, task) => sum + (task.estimatedHours || 0), 0);
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header avec bouton de retour */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center">
-                            <button
-                                onClick={onClose}
-                                className="flex items-center text-gray-600 hover:text-gray-900 mr-4"
-                            >
-                                <i className="fas fa-arrow-left mr-2"></i>
-                                Retour aux projets
-                            </button>
-                            <h1 className="text-2xl font-bold text-gray-900">{currentProject.title}</h1>
+        <>
+            <div className="fixed inset-0 bg-gray-50 z-50 overflow-y-auto">
+            {/* Header moderne avec informations principales */}
+            <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <div className="flex items-center mb-4">
+                                <button
+                                    onClick={onClose}
+                                    className="flex items-center text-white hover:text-gray-100 mr-4 transition-colors"
+                                >
+                                    <i className="fas fa-arrow-left mr-2"></i>
+                                    Retour aux projets
+                                </button>
+                                <h1 className="text-3xl font-bold">{currentProject.title}</h1>
+                            </div>
+                            {currentProject.description && (
+                                <p className="text-emerald-50 text-sm mb-4 max-w-2xl">{currentProject.description}</p>
+                            )}
+                            <div className="flex items-center gap-6 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(currentProject.status)}`}>
+                                        {currentProject.status}
+                                    </span>
+                                </div>
+                                {currentProject.dueDate && (
+                                    <div className="flex items-center gap-2">
+                                        <i className="fas fa-calendar-alt"></i>
+                                        <span className="text-sm">Échéance: {new Date(currentProject.dueDate).toLocaleDateString('fr-FR')}</span>
+                                    </div>
+                                )}
+                                {currentProject.startDate && (
+                                    <div className="flex items-center gap-2">
+                                        <i className="fas fa-play-circle"></i>
+                                        <span className="text-sm">Début: {new Date(currentProject.startDate).toLocaleDateString('fr-FR')}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <i className="fas fa-users"></i>
+                                    <span className="text-sm">{currentProject.team?.length || 0} membre(s)</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-gray-500">
-                                Statut: <span className="font-medium">{currentProject.status}</span>
-                            </span>
-                            <span className="text-sm text-gray-500">
-                                Échéance: <span className="font-medium">
-                                    {currentProject.dueDate ? new Date(currentProject.dueDate).toLocaleDateString('fr-FR') : 'Non définie'}
-                                </span>
-                            </span>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setLogTimeModalOpen(true)}
+                                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                                <i className="fas fa-clock"></i>
+                                Enregistrer du temps
+                            </button>
+                            <button
+                                onClick={() => setDeleteModalOpen(true)}
+                                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                                <i className="fas fa-trash"></i>
+                                Supprimer
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -624,63 +723,164 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
 
             {/* Contenu principal */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Sidebar avec informations du projet */}
-                    <div className="lg:col-span-1">
-                        {/* Métriques globales style Power BI */}
-                        <div className="bg-white rounded-lg shadow p-6 mb-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                <i className="fas fa-chart-bar text-blue-600 mr-2"></i>
-                                Métriques du projet
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-green-600 font-medium">Tâches</p>
-                                            <p className="text-2xl font-bold text-green-700">{(currentProject.tasks || []).length || 0}</p>
-                                        </div>
-                                        <i className="fas fa-tasks text-green-500 text-xl"></i>
-                                    </div>
-                                </div>
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-blue-600 font-medium">Équipe</p>
-                                            <p className="text-2xl font-bold text-blue-700">{currentProject.team?.length || 0}</p>
-                                        </div>
-                                        <i className="fas fa-users text-blue-500 text-xl"></i>
-                                    </div>
-                                </div>
-                                <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg p-4 border border-purple-200">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-purple-600 font-medium">Heures Est.</p>
-                                            <p className="text-2xl font-bold text-purple-700">
-                                                {(currentProject.tasks || []).reduce((sum, task) => sum + (task.estimatedHours || 0), 0)}h
-                                            </p>
-                                        </div>
-                                        <i className="fas fa-clock text-purple-500 text-xl"></i>
-                                    </div>
-                                </div>
-                                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-4 border border-orange-200">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-orange-600 font-medium">Enregistrées</p>
-                                            <p className="text-2xl font-bold text-orange-700">{totalLoggedHours}h</p>
-                                        </div>
-                                        <i className="fas fa-stopwatch text-orange-500 text-xl"></i>
-                                    </div>
-                                </div>
+                {/* Métriques en haut - Format large et moderne */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Tâches</span>
+                            <div className="bg-green-100 rounded-full p-3">
+                                <i className="fas fa-tasks text-green-600 text-xl"></i>
                             </div>
                         </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-bold text-gray-900">{totalTasks}</span>
+                            <span className="text-sm text-gray-500">tâches</span>
+                        </div>
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                <span>Progression</span>
+                                <span>{progressPercentage}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${progressPercentage}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div className="bg-white rounded-lg shadow p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Informations du projet</h2>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Équipe</span>
+                            <div className="bg-blue-100 rounded-full p-3">
+                                <i className="fas fa-users text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-bold text-gray-900">{currentProject.team?.length || 0}</span>
+                            <span className="text-sm text-gray-500">membre(s)</span>
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                            {currentProject.team?.slice(0, 3).map((member, idx) => (
+                                <div key={idx} className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                                    {(member.fullName || member.email || 'U').charAt(0).toUpperCase()}
+                                </div>
+                            ))}
+                            {currentProject.team && currentProject.team.length > 3 && (
+                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 text-xs font-semibold">
+                                    +{currentProject.team.length - 3}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Heures Estimées</span>
+                            <div className="bg-purple-100 rounded-full p-3">
+                                <i className="fas fa-clock text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-bold text-gray-900">{totalEstimatedHours}</span>
+                            <span className="text-sm text-gray-500">heures</span>
+                        </div>
+                        <div className="mt-3 text-xs text-gray-500">
+                            {totalTasks > 0 ? `${Math.round(totalEstimatedHours / totalTasks)}h par tâche` : 'Aucune tâche'}
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">Heures Enregistrées</span>
+                            <div className="bg-orange-100 rounded-full p-3">
+                                <i className="fas fa-stopwatch text-orange-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-bold text-gray-900">{totalLoggedHours}</span>
+                            <span className="text-sm text-gray-500">heures</span>
+                        </div>
+                        <div className="mt-3">
+                            {totalEstimatedHours > 0 && (
+                                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                    <span>Utilisation</span>
+                                    <span>{Math.round((totalLoggedHours / totalEstimatedHours) * 100)}%</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section principale avec onglets modernes */}
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    {/* Onglets modernes */}
+                    <div className="border-b border-gray-200 bg-gray-50">
+                        <nav className="flex space-x-1 px-6" aria-label="Tabs">
+                            <button
+                                onClick={() => setActiveTab('tasks')}
+                                className={`px-6 py-4 text-sm font-medium transition-all duration-200 ${
+                                    activeTab === 'tasks'
+                                        ? 'bg-white text-emerald-600 border-b-2 border-emerald-600 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                }`}
+                            >
+                                <i className={`fas fa-tasks mr-2 ${activeTab === 'tasks' ? 'text-emerald-600' : ''}`}></i>
+                                Tâches
+                                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                    activeTab === 'tasks' 
+                                        ? 'bg-emerald-100 text-emerald-700' 
+                                        : 'bg-gray-200 text-gray-600'
+                                }`}>
+                                    {totalTasks}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('risks')}
+                                className={`px-6 py-4 text-sm font-medium transition-all duration-200 ${
+                                    activeTab === 'risks'
+                                        ? 'bg-white text-red-600 border-b-2 border-red-600 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                }`}
+                            >
+                                <i className={`fas fa-exclamation-triangle mr-2 ${activeTab === 'risks' ? 'text-red-600' : ''}`}></i>
+                                Risques
+                                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                    activeTab === 'risks' 
+                                        ? 'bg-red-100 text-red-700' 
+                                        : 'bg-gray-200 text-gray-600'
+                                }`}>
+                                    {(currentProject.risks || []).length}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('report')}
+                                className={`px-6 py-4 text-sm font-medium transition-all duration-200 ${
+                                    activeTab === 'report'
+                                        ? 'bg-white text-blue-600 border-b-2 border-blue-600 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                }`}
+                            >
+                                <i className={`fas fa-file-alt mr-2 ${activeTab === 'report' ? 'text-blue-600' : ''}`}></i>
+                                Rapports
+                            </button>
+                        </nav>
+                    </div>
+
+                    {/* Contenu des onglets avec sidebar d'informations */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-0">
+                        {/* Sidebar droite avec informations et actions */}
+                        <div className="lg:col-span-1 bg-gray-50 border-l border-gray-200 p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                <i className="fas fa-info-circle text-blue-600"></i>
+                                Informations
+                            </h3>
                             
-                            <div className="space-y-4">
+                            <div className="space-y-6">
+                                {/* Description */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                                     <textarea
                                         value={currentProject.description || ''}
                                         onChange={(e) => {
@@ -688,208 +888,172 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                             setCurrentProject(updatedProject);
                                             onUpdateProject(updatedProject);
                                         }}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                        rows={3}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        rows={4}
                                         placeholder="Description du projet"
                                     />
                                 </div>
 
+                                {/* Membres de l'équipe */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Membres de l'équipe</label>
-                                    <div className="mt-2 space-y-2">
-                                        {currentProject.team.map(member => (
-                                            <div key={member.id} className="flex items-center space-x-2">
-                                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">Équipe</label>
+                                    <div className="space-y-2">
+                                        {currentProject.team?.map(member => (
+                                            <div key={member.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                                                     {(member.fullName || member.email || 'U').charAt(0).toUpperCase()}
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">
                                                         {member.fullName || member.email}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">{member.role}</p>
+                                                    <p className="text-xs text-gray-500 truncate">{member.role}</p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Suivi du temps</label>
-                                    <p className="mt-1 text-sm text-gray-900">{totalLoggedHours}h enregistrées</p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Charge de travail de l'équipe</label>
-                                    <div className="mt-3 space-y-3">
-                                        {getTeamWorkloadMetrics().map((roleData, index) => (
-                                            <div key={index} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                                            {roleData.role.charAt(0)}
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-900">{roleData.role}</h4>
-                                                            <p className="text-sm text-gray-600">{roleData.memberCount} membre(s)</p>
-                                                        </div>
+                                {/* Charge de travail */}
+                                {getTeamWorkloadMetrics().length > 0 && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-3">Charge de travail</label>
+                                        <div className="space-y-3">
+                                            {getTeamWorkloadMetrics().map((roleData, index) => (
+                                                <div key={index} className="bg-white rounded-lg p-3 border border-gray-200">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="text-sm font-semibold text-gray-900">{roleData.role}</h4>
+                                                        <span className="text-xs text-gray-500">{roleData.memberCount} membre(s)</span>
                                                     </div>
-                                                    <div className="flex space-x-4">
-                                                        <div className="text-center">
-                                                            <div className="text-2xl font-bold text-green-600">{roleData.taskCount}</div>
+                                                    <div className="grid grid-cols-3 gap-2 text-center mb-2">
+                                                        <div>
+                                                            <div className="text-lg font-bold text-green-600">{roleData.taskCount}</div>
                                                             <div className="text-xs text-gray-500">Tâches</div>
                                                         </div>
-                                                        <div className="text-center">
-                                                            <div className="text-2xl font-bold text-blue-600">{roleData.estimatedHours}h</div>
-                                                            <div className="text-xs text-gray-500">Est. Heures</div>
+                                                        <div>
+                                                            <div className="text-lg font-bold text-blue-600">{roleData.estimatedHours}h</div>
+                                                            <div className="text-xs text-gray-500">Est.</div>
                                                         </div>
-                                                        <div className="text-center">
-                                                            <div className="text-2xl font-bold text-purple-600">{roleData.loggedHours}h</div>
-                                                            <div className="text-xs text-gray-500">Enregistrées</div>
+                                                        <div>
+                                                            <div className="text-lg font-bold text-purple-600">{roleData.loggedHours}h</div>
+                                                            <div className="text-xs text-gray-500">Log.</div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="mt-3">
-                                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                                        <span>Progression</span>
-                                                        <span>{Math.round((roleData.loggedHours / Math.max(roleData.estimatedHours, 1)) * 100)}%</span>
-                                                    </div>
-                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
                                                         <div 
-                                                            className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-300"
+                                                            className="bg-gradient-to-r from-green-400 to-blue-500 h-1.5 rounded-full"
                                                             style={{ width: `${Math.min((roleData.loggedHours / Math.max(roleData.estimatedHours, 1)) * 100, 100)}%` }}
                                                         ></div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Actions rapides */}
+                                <div className="pt-4 border-t border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Actions rapides</h4>
+                                    <div className="space-y-2">
+                                        {activeTab === 'tasks' && (
+                                            <button 
+                                                onClick={handleGenerateTasksWithAI}
+                                                disabled={isLoading}
+                                                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2.5 px-4 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md"
+                                            >
+                                                <i className="fas fa-magic"></i>
+                                                {isLoading ? 'Génération...' : 'Générer des tâches (IA)'}
+                                            </button>
+                                        )}
+                                        {activeTab === 'risks' && (
+                                            <button 
+                                                onClick={handleIdentifyRisksWithAI}
+                                                disabled={isLoading}
+                                                className="w-full bg-gradient-to-r from-red-500 to-pink-600 text-white py-2.5 px-4 rounded-lg font-medium hover:from-red-600 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md"
+                                            >
+                                                <i className="fas fa-bolt"></i>
+                                                {isLoading ? 'Analyse...' : 'Identifier les risques (IA)'}
+                                            </button>
+                                        )}
+                                        {activeTab === 'report' && (
+                                            <>
+                                                <button 
+                                                    onClick={handleGenerateStatusReport}
+                                                    disabled={isLoading}
+                                                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2.5 px-4 rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md"
+                                                >
+                                                    <i className="fas fa-file-alt"></i>
+                                                    {isLoading ? 'Génération...' : 'Rapport d\'état'}
+                                                </button>
+                                                <button 
+                                                    onClick={handleSummarizeTasks}
+                                                    disabled={isLoading}
+                                                    className="w-full bg-gradient-to-r from-gray-700 to-gray-800 text-white py-2.5 px-4 rounded-lg font-medium hover:from-gray-800 hover:to-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md"
+                                                >
+                                                    <i className="fas fa-list"></i>
+                                                    {isLoading ? 'Analyse...' : 'Résumer les tâches'}
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Actions */}
-                            <div className="mt-6 space-y-3">
-                                {activeTab === 'tasks' && (
-                                    <>
-                                        <button 
-                                            onClick={handleGenerateTasksWithAI}
-                                            disabled={isLoading}
-                                            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 disabled:bg-green-300 flex items-center justify-center text-sm"
-                                        >
-                                            <i className="fas fa-magic mr-2"></i>
-                                            {isLoading ? 'Génération...' : 'Générer des tâches avec l\'IA'}
-                                        </button>
-                                        <button onClick={() => setLogTimeModalOpen(true)} className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-semibold hover:bg-gray-300 flex items-center justify-center text-sm">
-                                            <i className="fas fa-clock mr-2"></i>
-                                            Heure du journal
-                                        </button>
-                                        <button onClick={() => setDeleteModalOpen(true)} className="w-full text-red-600 py-2 px-4 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center text-sm">
-                                            <i className="fas fa-trash mr-2"></i>
-                                            Supprimer le projet
-                                        </button>
-                                    </>
-                                )}
-                                
-                                {activeTab === 'risks' && (
-                                    <>
-                                        <button 
-                                            onClick={handleIdentifyRisksWithAI}
-                                            disabled={isLoading}
-                                            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 disabled:bg-green-300 flex items-center justify-center text-sm"
-                                        >
-                                            <i className="fas fa-bolt mr-2"></i>
-                                            {isLoading ? 'Analyse en cours...' : 'Identifier les risques avec l\'IA'}
-                                        </button>
-                                        <button onClick={() => setLogTimeModalOpen(true)} className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-semibold hover:bg-gray-300 flex items-center justify-center text-sm">
-                                            <i className="fas fa-clock mr-2"></i>
-                                            Heure du journal
-                                        </button>
-                                        <button onClick={() => setDeleteModalOpen(true)} className="w-full text-red-600 py-2 px-4 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center text-sm">
-                                            <i className="fas fa-trash mr-2"></i>
-                                            Supprimer le projet
-                                        </button>
-                                    </>
-                                )}
-                                
-                                {activeTab === 'report' && (
-                                    <>
-                                        <button 
-                                            onClick={handleGenerateStatusReport}
-                                            disabled={isLoading}
-                                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-300 flex items-center justify-center text-sm"
-                                        >
-                                            <i className="fas fa-file-alt mr-2"></i>
-                                            {isLoading ? 'Génération...' : 'Générer un rapport d\'état'}
-                                        </button>
-                                        <button 
-                                            onClick={handleSummarizeTasks}
-                                            disabled={isLoading}
-                                            className="w-full bg-gray-800 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-900 disabled:bg-gray-400 flex items-center justify-center text-sm"
-                                        >
-                                            <i className="fas fa-list mr-2"></i>
-                                            {isLoading ? 'Analyse...' : 'Résumer les tâches'}
-                                        </button>
-                                        <button onClick={() => setLogTimeModalOpen(true)} className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-semibold hover:bg-gray-300 flex items-center justify-center text-sm">
-                                            <i className="fas fa-clock mr-2"></i>
-                                            Heure du journal
-                                        </button>
-                                        <button onClick={() => setDeleteModalOpen(true)} className="w-full text-red-600 py-2 px-4 rounded-lg font-semibold hover:bg-red-100 flex items-center justify-center text-sm">
-                                            <i className="fas fa-trash mr-2"></i>
-                                            Supprimer le projet
-                                        </button>
-                                    </>
-                                )}
-                            </div>
                         </div>
-                    </div>
 
-                    {/* Contenu principal avec onglets */}
-                    <div className="lg:col-span-3">
-                        <div className="bg-white rounded-lg shadow">
-                            {/* Onglets */}
-                            <div className="border-b border-gray-200">
-                                <nav className="-mb-px flex space-x-8 px-6">
-                                    <button
-                                        onClick={() => setActiveTab('tasks')}
-                                        className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                                            activeTab === 'tasks'
-                                                ? 'border-green-500 text-green-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        Tâches ({(currentProject.tasks || []).length})
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('risks')}
-                                        className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                                            activeTab === 'risks'
-                                                ? 'border-green-500 text-green-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        Gestion des risques
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('report')}
-                                        className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                                            activeTab === 'report'
-                                                ? 'border-green-500 text-green-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        Générer un rapport d'état
-                                    </button>
-                                </nav>
-                            </div>
+                        {/* Contenu principal de l'onglet */}
+                        <div className="lg:col-span-3 p-6">
+                            {activeTab === 'tasks' && (
+                                <div className="space-y-6">
+                                    {/* Formulaire pour ajouter une nouvelle tâche */}
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                            <i className="fas fa-plus-circle text-emerald-600"></i>
+                                            Ajouter une nouvelle tâche
+                                        </h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                            <input
+                                                type="text"
+                                                value={newTaskText}
+                                                onChange={(e) => setNewTaskText(e.target.value)}
+                                                placeholder="Nom de la tâche"
+                                                className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                                onKeyPress={(e) => {
+                                                    if (e.key === 'Enter' && newTaskText.trim()) {
+                                                        handleAddTask();
+                                                    }
+                                                }}
+                                            />
+                                            <input
+                                                type="date"
+                                                value={newTaskDueDate}
+                                                onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            />
+                                            <select
+                                                value={newTaskPriority}
+                                                onChange={(e) => setNewTaskPriority(e.target.value as 'Low' | 'Medium' | 'High')}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            >
+                                                <option value="Low">Faible</option>
+                                                <option value="Medium">Moyen</option>
+                                                <option value="High">Haut</option>
+                                            </select>
+                                        </div>
+                                        <button
+                                            onClick={handleAddTask}
+                                            disabled={!newTaskText.trim()}
+                                            className="mt-3 bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                                        >
+                                            <i className="fas fa-plus"></i>
+                                            Ajouter la tâche
+                                        </button>
+                                    </div>
 
-                            {/* Contenu des onglets */}
-                            <div className="p-6">
-                                {activeTab === 'tasks' && (
-                                    <div className="space-y-6">
-                                        {/* Tasks Table */}
-                                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                            <div className="overflow-x-auto">
-                                                <table className="min-w-full divide-y divide-gray-200">
-                                                    <thead className="bg-gray-50">
+                                    {/* Table des tâches */}
+                                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full divide-y divide-gray-200">
+                                                <thead className="bg-gray-50">
                                                         <tr>
                                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 <input type="checkbox" className="rounded" />
@@ -914,6 +1078,9 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                             </th>
                                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 Assigné à
+                                                            </th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                Actions
                                                             </th>
                                                         </tr>
                                                     </thead>
@@ -962,7 +1129,7 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                     <div className="flex items-center space-x-2">
                                                                         <input
                                                                             type="date"
-                                                                            value={task.dueDate || ''}
+                                                                            value={formatDateForInput(task.dueDate)}
                                                                             onChange={(e) => handleUpdateTask(task.id, { dueDate: e.target.value })}
                                                                             className="text-xs border border-gray-300 rounded px-2 py-1"
                                                                         />
@@ -1017,6 +1184,15 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                             ))}
                                                                         </select>
                                                                     </div>
+                                                                </td>
+                                                                <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                                                    <button
+                                                                        onClick={() => handleDeleteTask(task.id)}
+                                                                        className="text-red-600 hover:text-red-800 transition-colors p-2 rounded hover:bg-red-50"
+                                                                        title="Supprimer la tâche"
+                                                                    >
+                                                                        <i className="fas fa-trash"></i>
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                             );
@@ -1074,7 +1250,7 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                                     <input
                                                                         type="date"
-                                                                        value={task.dueDate || ''}
+                                                                        value={formatDateForInput(task.dueDate)}
                                                                         onChange={(e) => {
                                                                             const updatedTasks = pendingTasks.map(t => 
                                                                                 t.id === task.id ? { ...t, dueDate: e.target.value } : t
@@ -1152,6 +1328,18 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                         </select>
                                                                     </div>
                                                                 </td>
+                                                                <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const updatedTasks = pendingTasks.filter(t => t.id !== task.id);
+                                                                            setPendingTasks(updatedTasks);
+                                                                        }}
+                                                                        className="text-red-600 hover:text-red-800 transition-colors p-2 rounded hover:bg-red-50"
+                                                                        title="Supprimer la tâche temporaire"
+                                                                    >
+                                                                        <i className="fas fa-times"></i>
+                                                                    </button>
+                                                                </td>
                                                             </tr>
                                                             );
                                                         })}
@@ -1189,31 +1377,52 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {activeTab === 'risks' && (
                                     <div className="space-y-6">
-                                        {/* Risks Table */}
-                                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                        {/* Formulaire pour ajouter un nouveau risque */}
+                                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                                <i className="fas fa-exclamation-triangle text-red-600"></i>
+                                                Ajouter un nouveau risque
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Description du risque"
+                                                    className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                />
+                                                <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                                                    <option>Probabilité</option>
+                                                    <option value="Low">Faible</option>
+                                                    <option value="Medium">Moyenne</option>
+                                                    <option value="High">Élevée</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Table des risques */}
+                                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                                             <div className="overflow-x-auto">
                                                 <table className="min-w-full divide-y divide-gray-200">
                                                     <thead className="bg-gray-50">
                                                         <tr>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                                                 Description du risque
                                                             </th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                                                 Probabilité
                                                             </th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                                                 Impact
                                                             </th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Niveau de risque
+                                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                Niveau
                                                             </th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                                                 Stratégie d'atténuation
                                                             </th>
-                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                                                 Actions
                                                             </th>
                                                         </tr>
@@ -1279,8 +1488,9 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                 </td>
                                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                     <button
-                                                                            onClick={() => handleDeleteRisk(risk.id)}
-                                                                        className="text-red-600 hover:text-red-800"
+                                                                        onClick={() => handleDeleteRisk(risk.id)}
+                                                                        className="text-red-600 hover:text-red-800 transition-colors p-2 rounded hover:bg-red-50"
+                                                                        title="Supprimer le risque"
                                                                     >
                                                                         <i className="fas fa-trash"></i>
                                                                     </button>
@@ -1536,7 +1746,7 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleDeleteReport(report.id)}
-                                                                    className="text-red-600 hover:text-red-800"
+                                                                    className="text-red-600 hover:text-red-800 transition-colors p-2 rounded hover:bg-red-50"
                                                                     title="Supprimer le rapport"
                                                                 >
                                                                     <i className="fas fa-trash"></i>
@@ -1575,7 +1785,7 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleDeleteTaskSummary(summary.id)}
-                                                                    className="text-red-600 hover:text-red-800"
+                                                                    className="text-red-600 hover:text-red-800 transition-colors p-2 rounded hover:bg-red-50"
                                                                     title="Supprimer le résumé"
                                                                 >
                                                                     <i className="fas fa-trash"></i>
@@ -1626,8 +1836,9 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                     confirmButtonClass="bg-red-600 hover:bg-red-700"
                 />
             )}
-        </div>
+        </>
     );
 };
 
 export default ProjectDetailPage;
+

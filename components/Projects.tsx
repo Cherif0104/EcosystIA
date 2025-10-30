@@ -1508,6 +1508,13 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
     const [isProjectDetailPageOpen, setIsProjectDetailPageOpen] = useState(false);
     const [isProjectCreatePageOpen, setIsProjectCreatePageOpen] = useState(false);
+    
+    // États pour recherche, filtres et vue
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [sortBy, setSortBy] = useState<'date' | 'title' | 'status'>('date');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
 
     const validateProject = (projectData: Project | Omit<Project, 'id' | 'tasks' | 'risks'>): string | null => {
         if (!projectData.title?.trim()) {
@@ -1529,11 +1536,35 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
             return;
         }
 
-        if ('id' in projectData) {
-            onUpdateProject(projectData);
+        // Vérifier si on est en mode édition (si editingProject existe ou si l'ID est présent)
+        const isEditMode = editingProject !== null || ('id' in projectData && projectData.id !== undefined);
+
+        if (isEditMode) {
+            // Mode édition : utiliser l'ID du projet en édition ou celui fourni
+            const projectId = editingProject?.id || (projectData as Project).id;
+            if (!projectId) {
+                console.error('❌ Erreur: ID du projet manquant pour la mise à jour');
+                alert('Erreur: Impossible de mettre à jour le projet. ID manquant.');
+                return;
+            }
+            
+            // S'assurer que toutes les propriétés du projet sont incluses
+            const projectToUpdate: Project = {
+                ...editingProject!,
+                ...projectData,
+                id: projectId,
+                tasks: (projectData as Project).tasks || editingProject?.tasks || [],
+                risks: (projectData as Project).risks || editingProject?.risks || []
+            };
+            
+            console.log('🔄 Mise à jour projet ID:', projectId, projectToUpdate);
+            await onUpdateProject(projectToUpdate);
         } else {
-            onAddProject(projectData);
+            // Mode création
+            console.log('➕ Création nouveau projet');
+            await onAddProject(projectData as Omit<Project, 'id' | 'tasks' | 'risks'>);
         }
+        
         setIsProjectCreatePageOpen(false);
         setEditingProject(null);
     };
@@ -1551,11 +1582,46 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
     };
 
     const filteredProjects = useMemo(() => {
-        return projects.filter(project => {
-            // Filtrer par utilisateur connecté si nécessaire
-            return true; // Pour l'instant, afficher tous les projets
+        let filtered = projects.filter(project => {
+            // Filtre de recherche
+            const matchesSearch = searchQuery === '' || 
+                project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                project.team.some(member => 
+                    member.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    member.email.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+
+            // Filtre par statut
+            const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
+
+            return matchesSearch && matchesStatus;
         });
-    }, [projects]);
+
+        // Tri
+        filtered.sort((a, b) => {
+            let compareValue = 0;
+            
+            switch (sortBy) {
+                case 'title':
+                    compareValue = a.title.localeCompare(b.title);
+                    break;
+                case 'status':
+                    compareValue = a.status.localeCompare(b.status);
+                    break;
+                case 'date':
+                default:
+                    const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+                    const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+                    compareValue = dateA - dateB;
+                    break;
+            }
+
+            return sortOrder === 'asc' ? compareValue : -compareValue;
+        });
+
+        return filtered;
+    }, [projects, searchQuery, statusFilter, sortBy, sortOrder]);
 
     const canManage = useMemo(() => {
         return currentUser?.role === 'manager' || 
@@ -1593,121 +1659,595 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
         return Array.from(teamMembers.values()).slice(0, 3); // Limiter à 3 membres
     }, [projects]);
 
+    // Calculer les métriques globales
+    const totalProjects = projects.length;
+    const activeProjects = projects.filter(p => p.status === 'In Progress').length;
+    const completedProjects = projects.filter(p => p.status === 'Completed').length;
+    const totalTasks = projects.reduce((sum, p) => sum + (p.tasks?.length || 0), 0);
+    const totalTeamMembers = new Set(projects.flatMap(p => p.team.map(m => m.id))).size;
+
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center">
-                    <h1 className="text-3xl font-bold text-gray-800">{t('projects')}</h1>
-                    {isLoading && (
-                        <div className="ml-4 flex items-center text-blue-600">
-                            <i className="fas fa-spinner fa-spin mr-2"></i>
-                            <span className="text-sm">
-                                {loadingOperation === 'create' && 'Création...'}
-                                {loadingOperation === 'update' && 'Mise à jour...'}
-                                {loadingOperation === 'delete' && 'Suppression...'}
-                                {!loadingOperation && 'Chargement...'}
-                            </span>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header moderne avec gradient */}
+            <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h1 className="text-4xl font-bold mb-2">{t('projects')}</h1>
+                            <p className="text-emerald-50 text-sm">
+                                Gérez et suivez tous vos projets en un seul endroit
+                            </p>
                         </div>
-                    )}
-                </div>
-                {canManage && (
-                    <button
-                        onClick={() => handleOpenForm()}
-                        disabled={isLoading}
-                        className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
-                    >
-                        <i className="fas fa-plus mr-2"></i>
-                        {t('create_new_project')}
-                    </button>
-                )}
-            </div>
-
-            {/* Section Team Workload Metrics - Style Power BI */}
-            {projects.length > 0 && (
-                <div className="mb-8">
-                    <TeamWorkloadMetrics projects={projects} users={users} />
-                </div>
-            )}
-
-            {filteredProjects.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map(project => (
-                        <div key={project.id} className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="text-lg font-semibold text-gray-800 truncate">{project.title}</h3>
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusStyles[project.status]}`}>
-                                        {t(project.status.toLowerCase().replace(' ', '_'))}
+                        <div className="flex items-center gap-4">
+                            {isLoading && (
+                                <div className="flex items-center text-white">
+                                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                                    <span className="text-sm">
+                                        {loadingOperation === 'create' && 'Création...'}
+                                        {loadingOperation === 'update' && 'Mise à jour...'}
+                                        {loadingOperation === 'delete' && 'Suppression...'}
+                                        {!loadingOperation && 'Chargement...'}
                                     </span>
                                 </div>
-                                
-                                <p className="text-gray-600 text-sm mb-4 line-clamp-3">{project.description}</p>
-                                
-                                <div className="space-y-2 mb-4">
-                                    <div className="flex items-center text-sm text-gray-500">
-                                        <i className="fas fa-calendar mr-2"></i>
-                                        <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString() : t('no_due_date')}</span>
-                                    </div>
-                                    <div className="flex items-center text-sm text-gray-500">
-                                        <i className="fas fa-users mr-2"></i>
-                                        <span>{project.team.length} {t('team_members')}</span>
-                                    </div>
-                                    <div className="flex items-center text-sm text-gray-500">
-                                        <i className="fas fa-clock mr-2"></i>
-                                        <span>Charge de travail: {project.team.length > 0 ? 'Assignée' : 'Non assignée'}</span>
-                                    </div>
+                            )}
+                            {canManage && (
+                                <button
+                                    onClick={() => handleOpenForm()}
+                                    disabled={isLoading}
+                                    className="bg-white text-emerald-600 px-6 py-3 rounded-lg font-semibold hover:bg-emerald-50 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center transition-all shadow-md hover:shadow-lg"
+                                >
+                                    <i className="fas fa-plus mr-2"></i>
+                                    {t('create_new_project')}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Section Métriques - Style Power BI */}
+                {projects.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        {/* Carte Projets totaux */}
+                        <div className="bg-white rounded-xl shadow-lg border-l-4 border-blue-500 p-6 hover:shadow-xl transition-shadow">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Projets totaux</p>
+                                    <p className="text-3xl font-bold text-gray-900">{totalProjects}</p>
                                 </div>
-                                
-                                <div className="flex justify-between items-center">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedProject(project);
-                                            setIsProjectDetailPageOpen(true);
-                                        }}
-                                        disabled={isLoading}
-                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm disabled:text-gray-400 disabled:cursor-not-allowed"
-                                    >
-                                        {t('view_details')}
-                                    </button>
-                                    {canManage && (
-                                        <div className="flex space-x-2">
-                                            <button
-                                                onClick={() => handleOpenForm(project)}
-                                                disabled={isLoading}
-                                                className="text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                            >
-                                                <i className="fas fa-edit"></i>
-                                            </button>
-                                            <button
-                                                onClick={() => setProjectToDelete(project)}
-                                                disabled={isLoading}
-                                                className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                            >
-                                                <i className="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    )}
+                                <div className="bg-blue-100 rounded-full p-4">
+                                    <i className="fas fa-folder-open text-blue-600 text-2xl"></i>
                                 </div>
                             </div>
                         </div>
-                    ))}
+
+                        {/* Carte Projets actifs */}
+                        <div className="bg-white rounded-xl shadow-lg border-l-4 border-emerald-500 p-6 hover:shadow-xl transition-shadow">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Projets actifs</p>
+                                    <p className="text-3xl font-bold text-gray-900">{activeProjects}</p>
+                                </div>
+                                <div className="bg-emerald-100 rounded-full p-4">
+                                    <i className="fas fa-play-circle text-emerald-600 text-2xl"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Carte Tâches */}
+                        <div className="bg-white rounded-xl shadow-lg border-l-4 border-purple-500 p-6 hover:shadow-xl transition-shadow">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Tâches totales</p>
+                                    <p className="text-3xl font-bold text-gray-900">{totalTasks}</p>
+                                </div>
+                                <div className="bg-purple-100 rounded-full p-4">
+                                    <i className="fas fa-tasks text-purple-600 text-2xl"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Carte Membres d'équipe */}
+                        <div className="bg-white rounded-xl shadow-lg border-l-4 border-orange-500 p-6 hover:shadow-xl transition-shadow">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600 mb-1">Membres d'équipe</p>
+                                    <p className="text-3xl font-bold text-gray-900">{totalTeamMembers}</p>
+                                </div>
+                                <div className="bg-orange-100 rounded-full p-4">
+                                    <i className="fas fa-users text-orange-600 text-2xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Section Team Workload Metrics - Style Power BI */}
+                {projects.length > 0 && (
+                    <div className="mb-8">
+                        <TeamWorkloadMetrics projects={projects} users={users} />
+                    </div>
+                )}
+
+                {/* Barre de recherche, filtres et sélecteur de vue */}
+                <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        {/* Barre de recherche */}
+                        <div className="flex-1">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher un projet par nom, description ou membre d'équipe..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                                />
+                                <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Filtres */}
+                        <div className="flex flex-wrap gap-3">
+                            {/* Filtre par statut */}
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="all">Tous les statuts</option>
+                                <option value="Not Started">Non démarré</option>
+                                <option value="In Progress">En cours</option>
+                                <option value="Completed">Terminé</option>
+                                <option value="On Hold">En attente</option>
+                            </select>
+
+                            {/* Tri */}
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'status')}
+                                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                                <option value="date">Trier par date</option>
+                                <option value="title">Trier par titre</option>
+                                <option value="status">Trier par statut</option>
+                            </select>
+
+                            {/* Ordre de tri */}
+                            <button
+                                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                                title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+                            >
+                                <i className={`fas ${sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} mr-2`}></i>
+                                {sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Sélecteur de vue */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                        <div className="text-sm text-gray-600">
+                            {filteredProjects.length} {filteredProjects.length > 1 ? 'projets trouvés' : 'projet trouvé'}
+                            {searchQuery && (
+                                <span className="ml-2">
+                                    pour "{searchQuery}"
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600 mr-2">Vue :</span>
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`p-2 rounded-lg transition-all ${
+                                    viewMode === 'grid'
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Vue en grille"
+                            >
+                                <i className="fas fa-th"></i>
+                            </button>
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={`p-2 rounded-lg transition-all ${
+                                    viewMode === 'list'
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Vue en liste"
+                            >
+                                <i className="fas fa-list"></i>
+                            </button>
+                            <button
+                                onClick={() => setViewMode('compact')}
+                                className={`p-2 rounded-lg transition-all ${
+                                    viewMode === 'compact'
+                                        ? 'bg-emerald-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Vue compacte"
+                            >
+                                <i className="fas fa-grip-lines"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            ) : (
-                <div className="text-center py-16 px-4 bg-white mt-8 rounded-lg shadow-md">
-                    <i className="fas fa-folder-open fa-4x text-gray-400"></i>
-                    <h3 className="mt-6 text-xl font-semibold text-gray-800">Aucun projet créé pour le moment</h3>
-                    <p className="mt-2 text-gray-600">Commencez par créer votre premier projet pour organiser votre travail</p>
-                    {canManage && (
-                        <button 
-                            onClick={() => setIsProjectCreatePageOpen(true)}
-                            className="mt-6 bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
-                        >
-                            <i className="fas fa-plus mr-2"></i>
-                            Créer un nouveau projet
-                        </button>
-                    )}
-                </div>
-            )}
+
+                {/* Liste des projets */}
+                {filteredProjects.length > 0 ? (
+                    <>
+                        {/* Vue Grille */}
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredProjects.map(project => {
+                                    const projectTasks = project.tasks || [];
+                                    const completedTasks = projectTasks.filter(t => t.status === 'Completed').length;
+                                    const progressPercentage = projectTasks.length > 0 
+                                        ? Math.round((completedTasks / projectTasks.length) * 100) 
+                                        : 0;
+                                    
+                                    return (
+                                        <div 
+                                            key={project.id} 
+                                            className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden group"
+                                        >
+                                            {/* Header de la carte avec gradient */}
+                                            <div className={`bg-gradient-to-r ${
+                                                project.status === 'Completed' ? 'from-emerald-500 to-teal-500' :
+                                                project.status === 'In Progress' ? 'from-blue-500 to-cyan-500' :
+                                                'from-gray-400 to-gray-500'
+                                            } p-4 text-white`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <h3 className="text-xl font-bold mb-1 truncate">{project.title}</h3>
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white bg-opacity-20 backdrop-blur-sm">
+                                                            {t(project.status.toLowerCase().replace(' ', '_'))}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-6">
+                                                <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[2.5rem]">
+                                                    {project.description || 'Aucune description'}
+                                                </p>
+                                                
+                                                {/* Barre de progression */}
+                                                {projectTasks.length > 0 && (
+                                                    <div className="mb-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className="text-xs font-medium text-gray-600">Progression</span>
+                                                            <span className="text-xs font-bold text-gray-900">{progressPercentage}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                                            <div 
+                                                                className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                                                                style={{ width: `${progressPercentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className="space-y-2 mb-6">
+                                                    <div className="flex items-center text-sm text-gray-600">
+                                                        <i className="fas fa-calendar-alt mr-2 text-gray-400"></i>
+                                                        <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString('fr-FR') : t('no_due_date')}</span>
+                                                    </div>
+                                                    <div className="flex items-center text-sm text-gray-600">
+                                                        <i className="fas fa-users mr-2 text-gray-400"></i>
+                                                        <span>{project.team.length} {project.team.length > 1 ? 'membres' : 'membre'}</span>
+                                                    </div>
+                                                    <div className="flex items-center text-sm text-gray-600">
+                                                        <i className="fas fa-tasks mr-2 text-gray-400"></i>
+                                                        <span>{projectTasks.length} {projectTasks.length > 1 ? 'tâches' : 'tâche'}</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedProject(project);
+                                                            setIsProjectDetailPageOpen(true);
+                                                        }}
+                                                        disabled={isLoading}
+                                                        className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm disabled:text-gray-400 disabled:cursor-not-allowed flex items-center transition-colors"
+                                                    >
+                                                        <i className="fas fa-eye mr-2"></i>
+                                                        {t('view_details')}
+                                                    </button>
+                                                    {canManage && (
+                                                        <div className="flex space-x-3">
+                                                            <button
+                                                                onClick={() => handleOpenForm(project)}
+                                                                disabled={isLoading}
+                                                                className="text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors p-2 rounded hover:bg-blue-50"
+                                                                title="Modifier"
+                                                            >
+                                                                <i className="fas fa-edit"></i>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setProjectToDelete(project)}
+                                                                disabled={isLoading}
+                                                                className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors p-2 rounded hover:bg-red-50"
+                                                                title="Supprimer"
+                                                            >
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Vue Liste */}
+                        {viewMode === 'list' && (
+                            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                                <div className="divide-y divide-gray-200">
+                                    {filteredProjects.map(project => {
+                                        const projectTasks = project.tasks || [];
+                                        const completedTasks = projectTasks.filter(t => t.status === 'Completed').length;
+                                        const progressPercentage = projectTasks.length > 0 
+                                            ? Math.round((completedTasks / projectTasks.length) * 100) 
+                                            : 0;
+
+                                        return (
+                                            <div 
+                                                key={project.id} 
+                                                className="p-6 hover:bg-gray-50 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-4 mb-3">
+                                                            <div className={`flex-shrink-0 w-1 h-16 rounded ${
+                                                                project.status === 'Completed' ? 'bg-emerald-500' :
+                                                                project.status === 'In Progress' ? 'bg-blue-500' :
+                                                                'bg-gray-400'
+                                                            }`}></div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <h3 className="text-lg font-bold text-gray-900 truncate">{project.title}</h3>
+                                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                        project.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                                                                        project.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                                                                        'bg-gray-100 text-gray-800'
+                                                                    }`}>
+                                                                        {t(project.status.toLowerCase().replace(' ', '_'))}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-sm text-gray-600 mb-3 line-clamp-1">
+                                                                    {project.description || 'Aucune description'}
+                                                                </p>
+                                                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                                                                    <div className="flex items-center">
+                                                                        <i className="fas fa-calendar-alt mr-2"></i>
+                                                                        <span>{project.dueDate ? new Date(project.dueDate).toLocaleDateString('fr-FR') : t('no_due_date')}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center">
+                                                                        <i className="fas fa-users mr-2"></i>
+                                                                        <span>{project.team.length} {project.team.length > 1 ? 'membres' : 'membre'}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center">
+                                                                        <i className="fas fa-tasks mr-2"></i>
+                                                                        <span>{projectTasks.length} {projectTasks.length > 1 ? 'tâches' : 'tâche'}</span>
+                                                                    </div>
+                                                                    {projectTasks.length > 0 && (
+                                                                        <div className="flex items-center flex-1 min-w-48">
+                                                                            <div className="flex-1 bg-gray-200 rounded-full h-2 mr-2">
+                                                                                <div 
+                                                                                    className="bg-emerald-600 h-2 rounded-full transition-all"
+                                                                                    style={{ width: `${progressPercentage}%` }}
+                                                                                ></div>
+                                                                            </div>
+                                                                            <span className="text-xs font-bold text-gray-700">{progressPercentage}%</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 ml-4">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedProject(project);
+                                                                setIsProjectDetailPageOpen(true);
+                                                            }}
+                                                            disabled={isLoading}
+                                                            className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm disabled:text-gray-400 disabled:cursor-not-allowed flex items-center transition-colors px-4 py-2 rounded-lg hover:bg-emerald-50"
+                                                        >
+                                                            <i className="fas fa-eye mr-2"></i>
+                                                            {t('view_details')}
+                                                        </button>
+                                                        {canManage && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleOpenForm(project)}
+                                                                    disabled={isLoading}
+                                                                    className="text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors p-2 rounded hover:bg-blue-50"
+                                                                    title="Modifier"
+                                                                >
+                                                                    <i className="fas fa-edit"></i>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setProjectToDelete(project)}
+                                                                    disabled={isLoading}
+                                                                    className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors p-2 rounded hover:bg-red-50"
+                                                                    title="Supprimer"
+                                                                >
+                                                                    <i className="fas fa-trash"></i>
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Vue Compacte */}
+                        {viewMode === 'compact' && (
+                            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Équipe</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tâches</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progression</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Échéance</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {filteredProjects.map(project => {
+                                            const projectTasks = project.tasks || [];
+                                            const completedTasks = projectTasks.filter(t => t.status === 'Completed').length;
+                                            const progressPercentage = projectTasks.length > 0 
+                                                ? Math.round((completedTasks / projectTasks.length) * 100) 
+                                                : 0;
+
+                                            return (
+                                                <tr key={project.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900">{project.title}</div>
+                                                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                                                                {project.description || 'Aucune description'}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                            project.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                                                            project.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {t(project.status.toLowerCase().replace(' ', '_'))}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center text-sm text-gray-500">
+                                                            <i className="fas fa-users mr-2"></i>
+                                                            <span>{project.team.length}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {projectTasks.length} {projectTasks.length > 1 ? 'tâches' : 'tâche'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-1 bg-gray-200 rounded-full h-2 mr-2 max-w-24">
+                                                                <div 
+                                                                    className="bg-emerald-600 h-2 rounded-full transition-all"
+                                                                    style={{ width: `${progressPercentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="text-xs font-bold text-gray-700">{progressPercentage}%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {project.dueDate ? new Date(project.dueDate).toLocaleDateString('fr-FR') : '-'}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedProject(project);
+                                                                    setIsProjectDetailPageOpen(true);
+                                                                }}
+                                                                disabled={isLoading}
+                                                                className="text-emerald-600 hover:text-emerald-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                                title="Voir détails"
+                                                            >
+                                                                <i className="fas fa-eye"></i>
+                                                            </button>
+                                                            {canManage && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => handleOpenForm(project)}
+                                                                        disabled={isLoading}
+                                                                        className="text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                                        title="Modifier"
+                                                                    >
+                                                                        <i className="fas fa-edit"></i>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setProjectToDelete(project)}
+                                                                        disabled={isLoading}
+                                                                        className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                                        title="Supprimer"
+                                                                    >
+                                                                        <i className="fas fa-trash"></i>
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
+                        <div className="mb-6">
+                            <i className={`fas ${searchQuery || statusFilter !== 'all' ? 'fa-search' : 'fa-folder-open'} fa-5x text-gray-300`}></i>
+                        </div>
+                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                            {searchQuery || statusFilter !== 'all' 
+                                ? 'Aucun projet ne correspond à vos critères' 
+                                : 'Aucun projet créé pour le moment'
+                            }
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                            {searchQuery || statusFilter !== 'all'
+                                ? 'Essayez de modifier vos critères de recherche ou de filtrage'
+                                : 'Commencez par créer votre premier projet pour organiser votre travail'
+                            }
+                        </p>
+                        {(searchQuery || statusFilter !== 'all') && (
+                            <button 
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setStatusFilter('all');
+                                }}
+                                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-semibold shadow-md hover:shadow-lg mr-3"
+                            >
+                                <i className="fas fa-times mr-2"></i>
+                                Réinitialiser les filtres
+                            </button>
+                        )}
+                        {canManage && (
+                            <button 
+                                onClick={() => setIsProjectCreatePageOpen(true)}
+                                className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md hover:shadow-lg"
+                            >
+                                <i className="fas fa-plus mr-2"></i>
+                                Créer un nouveau projet
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Pages */}
             {isProjectCreatePageOpen && (

@@ -2,15 +2,32 @@
 
 export type Role = 'student' | 'employer' | 'super_administrator' | 'administrator' | 'manager' | 'supervisor' | 'editor' | 'entrepreneur' | 'funder' | 'mentor' | 'intern' | 'trainer' | 'implementer' | 'coach' | 'facilitator' | 'publisher' | 'producer' | 'artist' | 'alumni';
 
+export type ModuleName = 'projects' | 'goals_okrs' | 'time_tracking' | 'leave_management' | 'finance' | 'knowledge_base' | 'courses' | 'jobs' | 'ai_coach' | 'gen_ai_lab' | 'crm_sales' | 'analytics' | 'talent_analytics' | 'user_management' | 'course_management' | 'job_management' | 'leave_management_admin';
+
+export interface ModulePermission {
+  id?: string;
+  userId: string;
+  moduleName: ModuleName;
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+  canApprove: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
-  id: number;
+  id: string | number; // UUID from Supabase (string) ou legacy number
+  profileId?: string; // UUID du profil Supabase (profiles.id) - utilisé pour TimeLog.userId
   name: string;
+  fullName?: string; // Alias pour name (utilisé par Supabase)
   email: string;
   avatar: string;
   role: Role;
   skills: string[];
   phone?: string;
   location?: string;
+  isActive?: boolean; // Statut d'activation de l'utilisateur (true par défaut)
 }
 
 export interface FileAttachment {
@@ -37,15 +54,31 @@ export interface Module {
 }
 
 export interface Course {
-  id: number;
+  id: string; // UUID from Supabase
   title: string;
   instructor: string;
-  duration: string;
-  progress: number;
-  icon: string;
   description: string;
-  modules: Module[];
-  completedLessons?: string[];
+  duration: number | string; // En heures ou "6 Weeks" pour compatibilité
+  level?: 'beginner' | 'intermediate' | 'advanced';
+  category?: string;
+  price?: number;
+  status?: 'draft' | 'published' | 'archived';
+  thumbnailUrl?: string;
+  rating?: number;
+  studentsCount?: number;
+  lessonsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  // Nouveaux champs pour ciblage et liens
+  targetStudents?: string[] | null; // Array de user IDs (null = tous les utilisateurs)
+  youtubeUrl?: string | null;
+  driveUrl?: string | null;
+  otherLinks?: Array<{ url: string; type: string; label: string }> | null;
+  // Champs pour compatibilité avec l'ancienne structure
+  progress?: number; // Progression de l'utilisateur actuel (0-100)
+  icon?: string; // Icône par défaut
+  modules?: Module[]; // Modules du cours
+  completedLessons?: string[]; // Leçons complétées par l'utilisateur
 }
 
 export interface Job {
@@ -53,11 +86,23 @@ export interface Job {
   title: string;
   company: string;
   location: string;
-  type: 'Full-time' | 'Part-time' | 'Contract';
+  type: 'Full-time' | 'Part-time' | 'Contract' | 'Freelance' | 'Internship' | 'Temporary' | 'Fixed-term' | 'Permanent' | 'Seasonal' | 'Volunteer';
   postedDate: string;
   description: string;
   requiredSkills: string[];
   applicants: User[];
+  status?: 'published' | 'draft' | 'archived';
+  // Champs supplémentaires complets
+  sector?: string;
+  experienceLevel?: 'Entry' | 'Mid' | 'Senior' | 'Executive' | 'Intern' | 'Graduate';
+  remoteWork?: 'Remote' | 'Hybrid' | 'On-site';
+  salary?: string;
+  benefits?: string;
+  education?: string;
+  languages?: string;
+  applicationLink?: string;
+  applicationEmail?: string;
+  companyWebsite?: string;
 }
 
 export interface Task {
@@ -133,16 +178,28 @@ export interface Contact {
 }
 
 export interface Document {
-  id: number;
+  id: string; // UUID from Supabase
   title: string;
   content: string;
+  description?: string; // Description courte du document
   createdAt: string;
   createdBy: string;
+  createdById?: string; // UUID du profile qui a créé le document
+  updatedAt?: string;
+  tags?: string[];
+  category?: string;
+  isPublic?: boolean;
+  viewCount?: number; // Nombre de consultations
+  lastViewedAt?: string; // Dernière consultation
+  version?: number; // Version du document
+  isFavorite?: boolean; // Si l'utilisateur actuel a mis en favori
+  thumbnailUrl?: string; // Image de prévisualisation
+  attachments?: Array<{ name: string; url: string; type: string; size: number }>; // Pièces jointes
 }
 
 export interface TimeLog {
-  id: number;
-  userId: number;
+  id: string; // UUID from Supabase
+  userId: string; // UUID from Supabase (profile.id)
   entityType: 'project' | 'course' | 'task';
   entityId: number | string;
   entityTitle: string;
@@ -152,18 +209,28 @@ export interface TimeLog {
 }
 
 export interface LeaveRequest {
-  id: number;
-  userId: number;
-  userName: string;
-  userAvatar: string;
-  startDate: string;
-  endDate: string;
+  id: string; // UUID from Supabase
+  userId: string; // UUID from Supabase (profile.id)
+  userName?: string; // Pour compatibilité affichage (récupéré depuis profiles)
+  userAvatar?: string; // Pour compatibilité affichage (récupéré depuis profiles)
+  leaveTypeId?: string; // UUID du type de congé (FK → leave_types.id)
+  leaveTypeName?: string; // Nom du type de congé pour affichage
+  startDate: string; // Format ISO: yyyy-MM-dd
+  endDate: string; // Format ISO: yyyy-MM-dd
   reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled'; // lowercase pour correspondre à Supabase
+  approverId?: string; // UUID du profile qui a approuvé/rejeté
+  rejectionReason?: string; // Raison du rejet si applicable
+  approvalReason?: string; // Motif d'approbation si applicable
+  isUrgent?: boolean; // Congé urgent ?
+  urgencyReason?: string; // Motif de l'urgence
+  managerId?: string; // UUID du manager assigné
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Invoice {
-  id: number;
+  id: string; // UUID
   invoiceNumber: string;
   clientName: string;
   amount: number;
@@ -172,11 +239,11 @@ export interface Invoice {
   receipt?: Receipt;
   paidDate?: string;
   paidAmount?: number;
-  recurringSourceId?: number;
+  recurringSourceId?: string; // UUID
 }
 
 export interface Expense {
-  id: number;
+  id: string; // UUID
   category: string;
   description: string;
   amount: number;
@@ -184,14 +251,14 @@ export interface Expense {
   dueDate?: string;
   receipt?: Receipt;
   status: 'Paid' | 'Unpaid';
-  budgetItemId?: string;
-  recurringSourceId?: number;
+  budgetItemId?: string; // UUID
+  recurringSourceId?: string; // UUID
 }
 
 export type RecurrenceFrequency = 'Monthly' | 'Quarterly' | 'Annually';
 
 export interface RecurringInvoice {
-    id: number;
+    id: string; // UUID
     clientName: string;
     amount: number;
     frequency: RecurrenceFrequency;
@@ -201,7 +268,7 @@ export interface RecurringInvoice {
 }
 
 export interface RecurringExpense {
-    id: number;
+    id: string; // UUID
     category: string;
     description: string;
     amount: number;
@@ -212,25 +279,25 @@ export interface RecurringExpense {
 }
 
 export interface BudgetItem {
-    id: string;
+    id: string; // UUID
     description: string;
     amount: number;
 }
 
 export interface BudgetLine {
-    id: string;
+    id: string; // UUID
     title: string;
     items: BudgetItem[];
 }
 
 export interface Budget {
-    id: number;
+    id: string; // UUID
     title: string;
     type: 'Project' | 'Office';
     amount: number;
     startDate: string;
     endDate: string;
-    projectId?: number;
+    projectId?: string; // UUID
     budgetLines: BudgetLine[];
 }
 

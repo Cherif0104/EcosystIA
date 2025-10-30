@@ -1,6 +1,5 @@
 import { supabase } from './supabaseService';
 import { User } from '../types';
-import { SenegelAuthService } from './senegelAuthService';
 
 export interface AuthUser {
   id: string;
@@ -25,19 +24,72 @@ export interface SignInData {
 
 // Service d'authentification Supabase
 export class AuthService {
+  // Vérifier si un rôle management existe déjà
+  static async checkRoleAvailability(role: string): Promise<{ available: boolean; error?: string }> {
+    try {
+      // Bloquer complètement super_administrator
+      if (role === 'super_administrator') {
+        return { 
+          available: false, 
+          error: 'Le rôle super_administrator ne peut pas être créé via l\'interface publique' 
+        };
+      }
+
+      // Limiter les rôles management à un seul compte
+      const restrictedRoles = ['administrator', 'manager', 'supervisor'];
+      
+      if (restrictedRoles.includes(role)) {
+        const { data: existing, error } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('role', role)
+          .limit(1);
+
+        if (error) {
+          console.error('Erreur vérification rôle:', error);
+          return { available: true }; // En cas d'erreur, on autorise par sécurité
+        }
+
+        if (existing && existing.length > 0) {
+          return { 
+            available: false, 
+            error: `Un compte avec le rôle "${role}" existe déjà. Ce rôle est limité à un seul compte.` 
+          };
+        }
+      }
+
+      // Les autres rôles sont autorisés sans restriction
+      return { available: true };
+    } catch (error) {
+      console.error('Erreur vérification disponibilité rôle:', error);
+      return { available: true }; // En cas d'erreur, on autorise par sécurité
+    }
+  }
+
   // Inscription
   static async signUp(data: SignUpData) {
     try {
+      // Vérifier la disponibilité du rôle avant l'inscription
+      const roleCheck = await this.checkRoleAvailability(data.role || 'student');
+      
+      if (!roleCheck.available) {
+        const error = new Error(roleCheck.error || 'Rôle non disponible');
+        return { user: null, error };
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
+          email_redirect_to: undefined, // Pas de redirection email
           data: {
             full_name: data.full_name,
             phone_number: data.phone_number,
             role: data.role || 'student'
           }
-        }
+        },
+        // Confirmer automatiquement l'email pour le développement
+        // En production, vous devriez activer la confirmation par email
       });
 
       if (authError) throw authError;
@@ -67,45 +119,12 @@ export class AuthService {
     }
   }
 
-  // Connexion
+  // Connexion - Utilise uniquement Supabase Auth
   static async signIn(data: SignInData) {
     try {
       console.log('🔍 AuthService.signIn appelé avec:', { email: data.email, password: '***' });
       
-      // D'abord, essayer avec les utilisateurs SENEGEL natifs
-      console.log('🇸🇳 Tentative d\'authentification SENEGEL...');
-      const senegelResult = await SenegelAuthService.signInSenegelUser(data.email, data.password);
-      console.log('📊 Résultat SENEGEL:', senegelResult);
-      
-      if (senegelResult.user) {
-        console.log('✅ Authentification SENEGEL réussie !');
-        
-        // Créer une session Supabase artificielle pour la persistance
-        const mockSession = {
-          user: {
-            id: senegelResult.user.id,
-            email: senegelResult.user.email,
-            user_metadata: {
-              full_name: senegelResult.user.full_name,
-              role: senegelResult.user.role,
-              phone_number: senegelResult.user.phone_number
-            }
-          },
-          access_token: 'senegel-mock-token',
-          refresh_token: 'senegel-mock-refresh-token',
-          expires_in: 3600,
-          token_type: 'bearer'
-        };
-
-        // Stocker la session dans localStorage pour la persistance
-        localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
-        console.log('💾 Session SENEGEL stockée pour persistance');
-        
-        return senegelResult;
-      }
-
-      console.log('🔄 Tentative d\'authentification Supabase standard...');
-      // Si ce n'est pas un utilisateur SENEGEL, essayer l'authentification Supabase normale
+      // Authentification Supabase uniquement
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
@@ -113,47 +132,84 @@ export class AuthService {
 
       if (authError) {
         console.error('❌ Erreur Supabase Auth:', authError);
-        throw authError;
+        return { user: null, error: authError };
       }
 
-      if (authData.user) {
-        console.log('👤 Utilisateur Supabase trouvé:', authData.user.id);
-        // Récupérer le profil utilisateur
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', authData.user.id)
-          .single();
+      if (!authData.user) {
+        console.log('❌ Aucun utilisateur retourné par Supabase');
+        return { user: null, error: 'Aucun utilisateur trouvé' };
+      }
 
-        if (profileError) {
-          // Ne pas logger l'erreur si c'est juste un profil manquant
-          if (profileError.code !== 'PGRST116') {
-            console.error('Erreur récupération profil:', profileError);
+      console.log('👤 Utilisateur Supabase trouvé:', authData.user.id);
+      
+      // Récupérer le profil utilisateur depuis la table profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('❌ Erreur récupération profil:', profileError);
+        // Si le profil n'existe pas, créer un profil basique depuis les metadata
+        if (profileError.code === 'PGRST116') {
+          console.log('⚠️ Profil non trouvé, création depuis metadata...');
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: authData.user.id,
+              email: authData.user.email || '',
+              full_name: authData.user.user_metadata?.full_name || authData.user.email || '',
+              role: authData.user.user_metadata?.role || 'student',
+              phone_number: authData.user.user_metadata?.phone_number || null,
+              is_active: true
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('❌ Erreur création profil:', createError);
+            return { user: null, error: createError };
           }
-          return { user: null, error: profileError };
+
+          // Mettre à jour la dernière connexion
+          await supabase
+            .from('profiles')
+            .update({ last_login: new Date().toISOString() })
+            .eq('user_id', authData.user.id);
+
+          console.log('✅ Profil créé et authentification réussie !');
+          return { 
+            user: {
+              id: authData.user.id,
+              email: newProfile.email,
+              full_name: newProfile.full_name,
+              role: newProfile.role,
+              avatar_url: newProfile.avatar_url || ''
+            }, 
+            error: null 
+          };
         }
-
-        // Mettre à jour la dernière connexion
-        await supabase
-          .from('profiles')
-          .update({ last_login: new Date().toISOString() })
-          .eq('user_id', authData.user.id);
-
-        console.log('✅ Authentification Supabase réussie !');
-        return { 
-          user: {
-            id: authData.user.id,
-            email: profile.email,
-            full_name: profile.full_name,
-            role: profile.role,
-            avatar_url: profile.avatar_url
-          }, 
-          error: null 
-        };
+        return { user: null, error: profileError };
       }
 
-      console.log('❌ Aucun utilisateur retourné par Supabase');
-      return { user: null, error: 'Aucun utilisateur trouvé' };
+      // Mettre à jour la dernière connexion
+      await supabase
+        .from('profiles')
+        .update({ last_login: new Date().toISOString() })
+        .eq('user_id', authData.user.id);
+
+      console.log('✅ Authentification Supabase réussie !');
+      return { 
+        user: {
+          id: authData.user.id,
+          email: profile.email,
+          full_name: profile.full_name,
+          role: profile.role,
+          avatar_url: profile.avatar_url || ''
+        }, 
+        error: null 
+      };
     } catch (error) {
       console.error('💥 Erreur dans AuthService.signIn:', error);
       return { user: null, error };

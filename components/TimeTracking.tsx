@@ -154,6 +154,7 @@ interface TimeTrackingProps {
   meetings: Meeting[];
   users: User[];
   onAddTimeLog: (log: Omit<TimeLog, 'id' | 'userId'>) => void;
+  onDeleteTimeLog: (logId: string) => void;
   onAddMeeting: (meeting: Omit<Meeting, 'id'>) => void;
   onUpdateMeeting: (meeting: Meeting) => void;
   onDeleteMeeting: (meetingId: number) => void;
@@ -161,23 +162,92 @@ interface TimeTrackingProps {
   courses: Course[];
 }
 
-const TimeTracking: React.FC<TimeTrackingProps> = ({ timeLogs, meetings, users, onAddTimeLog, onAddMeeting, onUpdateMeeting, onDeleteMeeting, projects, courses }) => {
+const TimeTracking: React.FC<TimeTrackingProps> = ({ timeLogs, meetings, users, onAddTimeLog, onDeleteTimeLog, onAddMeeting, onUpdateMeeting, onDeleteMeeting, projects, courses }) => {
   const { t, language } = useLocalization();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'logs' | 'calendar'>('logs');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterEntityType, setFilterEntityType] = useState<'all' | 'project' | 'course' | 'task'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'duration' | 'entity'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const [isLogModalOpen, setLogModalOpen] = useState(false);
   const [isMeetingFormOpen, setMeetingFormOpen] = useState(false);
   const [isMeetingDetailOpen, setMeetingDetailOpen] = useState<Meeting | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [deletingMeetingId, setDeletingMeetingId] = useState<number | null>(null);
+  const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
   const [logInitialValues, setLogInitialValues] = useState<any>(null);
-
   const [currentDate, setCurrentDate] = useState(new Date());
 
   if (!user) return null;
 
-  const userTimeLogs = timeLogs.filter(log => log.userId === user.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Filtrer les logs de l'utilisateur
+  const userTimeLogs = useMemo(() => {
+    // Utiliser profileId si disponible, sinon user.id (compatibilité)
+    const userIdToMatch = user.profileId || String(user.id);
+    return timeLogs.filter(log => String(log.userId) === userIdToMatch);
+  }, [timeLogs, user.id, user.profileId]);
+
+  // Calculer les métriques
+  const metrics = useMemo(() => {
+    const totalLogs = userTimeLogs.length;
+    const totalMinutes = userTimeLogs.reduce((sum, log) => sum + log.duration, 0);
+    const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
+    const avgMinutesPerDay = totalLogs > 0 ? Math.round(totalMinutes / 7) : 0; // Moyenne sur 7 jours
+    const thisWeekLogs = userTimeLogs.filter(log => {
+      const logDate = new Date(log.date);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return logDate >= weekAgo;
+    }).length;
+
+    return {
+      totalLogs,
+      totalHours,
+      avgMinutesPerDay,
+      thisWeekLogs
+    };
+  }, [userTimeLogs]);
+
+  // Recherche et filtres
+  const filteredAndSortedLogs = useMemo(() => {
+    let filtered = [...userTimeLogs];
+
+    // Filtre par type d'entité
+    if (filterEntityType !== 'all') {
+      filtered = filtered.filter(log => log.entityType === filterEntityType);
+    }
+
+    // Recherche
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(log => 
+        log.entityTitle.toLowerCase().includes(query) ||
+        log.description.toLowerCase().includes(query)
+      );
+    }
+
+    // Tri
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'duration':
+          comparison = a.duration - b.duration;
+          break;
+        case 'entity':
+          comparison = a.entityTitle.localeCompare(b.entityTitle);
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [userTimeLogs, searchQuery, filterEntityType, sortBy, sortOrder]);
 
   const handleSaveLog = (logData: Omit<TimeLog, 'id' | 'userId'>) => {
     onAddTimeLog(logData);
@@ -240,61 +310,295 @@ const TimeTracking: React.FC<TimeTrackingProps> = ({ timeLogs, meetings, users, 
 
   return (
     <>
-      <div className="flex justify-between items-center">
+      {/* Header avec gradient */}
+      <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">{t('time_tracking')}</h1>
-          <p className="mt-1 text-gray-600">{t('time_tracking_subtitle')}</p>
+            <h1 className="text-3xl font-bold mb-2">{t('time_tracking')}</h1>
+            <p className="text-emerald-100">{t('time_tracking_subtitle')}</p>
         </div>
-        <button onClick={() => activeTab === 'logs' ? setLogModalOpen(true) : setMeetingFormOpen(true)} className="bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-emerald-700 flex items-center">
+          <button 
+            onClick={() => activeTab === 'logs' ? setLogModalOpen(true) : setMeetingFormOpen(true)} 
+            className="bg-white text-emerald-600 font-bold py-2 px-4 rounded-lg hover:bg-emerald-50 flex items-center shadow-md"
+          >
           <i className="fas fa-plus mr-2"></i>
           {activeTab === 'logs' ? t('log_time') : t('schedule_meeting')}
         </button>
       </div>
+      </div>
 
+      {/* Métriques Power BI style */}
+      {activeTab === 'logs' && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-emerald-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">{t('total_logs')}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{metrics.totalLogs}</p>
+              </div>
+              <div className="bg-emerald-100 rounded-full p-3">
+                <i className="fas fa-clock text-emerald-600 text-xl"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">{t('total_hours')}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{metrics.totalHours}h</p>
+              </div>
+              <div className="bg-blue-100 rounded-full p-3">
+                <i className="fas fa-hourglass-half text-blue-600 text-xl"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">{t('this_week')}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{metrics.thisWeekLogs}</p>
+              </div>
+              <div className="bg-purple-100 rounded-full p-3">
+                <i className="fas fa-calendar-week text-purple-600 text-xl"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">{t('daily_average')}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{metrics.avgMinutesPerDay}m</p>
+              </div>
+              <div className="bg-orange-100 rounded-full p-3">
+                <i className="fas fa-chart-line text-orange-600 text-xl"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
        <div className="mt-8 border-b border-gray-200">
             <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                <button onClick={() => setActiveTab('logs')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'logs' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('my_time_logs')}</button>
-                <button onClick={() => setActiveTab('calendar')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'calendar' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('calendar_and_meetings')}</button>
+          <button 
+            onClick={() => setActiveTab('logs')} 
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'logs' 
+                ? 'border-emerald-500 text-emerald-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            {t('my_time_logs')}
+          </button>
+          <button 
+            onClick={() => setActiveTab('calendar')} 
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'calendar' 
+                ? 'border-emerald-500 text-emerald-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            {t('calendar_and_meetings')}
+          </button>
             </nav>
        </div>
 
+      {/* Logs Tab */}
       {activeTab === 'logs' && (
-        <div className="mt-6 bg-white rounded-lg shadow-lg">
-            <div className="divide-y divide-gray-200">
-            {userTimeLogs.length > 0 ? (
-                userTimeLogs.map(log => (
-                <div key={log.id} className="p-4 flex items-start space-x-4">
-                    <div className="bg-gray-100 rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center">
-                        <i className={`${getIconForEntityType(log.entityType)} text-gray-500`}></i>
+        <div className="mt-6">
+          {/* Recherche et filtres */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder={t('search') + '...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              <select
+                value={filterEntityType}
+                onChange={(e) => setFilterEntityType(e.target.value as any)}
+                className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="all">{t('all_types')}</option>
+                <option value="project">{t('projects')}</option>
+                <option value="course">{t('courses')}</option>
+                <option value="task">{t('tasks')}</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="date">{t('sort_by_date')}</option>
+                <option value="duration">{t('sort_by_duration')}</option>
+                <option value="entity">{t('sort_by_entity')}</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="p-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <i className={`fas fa-sort-${sortOrder === 'asc' ? 'amount-down' : 'amount-up'}`}></i>
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  <i className="fas fa-th"></i>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  <i className="fas fa-list"></i>
+                </button>
+                <button
+                  onClick={() => setViewMode('compact')}
+                  className={`p-2 rounded-md ${viewMode === 'compact' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  <i className="fas fa-grip-lines"></i>
+                </button>
+              </div>
+            </div>
+            {searchQuery && (
+              <div className="mt-3 text-sm text-gray-600">
+                {filteredAndSortedLogs.length} {t('results_found')}
+              </div>
+            )}
+          </div>
+
+          {/* Liste des logs */}
+          {filteredAndSortedLogs.length > 0 ? (
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredAndSortedLogs.map(log => (
+                  <div key={log.id} className="bg-white rounded-lg shadow-md p-5 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="bg-emerald-100 rounded-full w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                        <i className={`${getIconForEntityType(log.entityType)} text-emerald-600 text-lg`}></i>
+                      </div>
+                      <button
+                        onClick={() => setDeletingLogId(log.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                    <h3 className="font-semibold text-gray-800 mb-2">{log.entityTitle}</h3>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{log.description}</p>
+                    <div className="flex justify-between items-center pt-3 border-t">
+                      <span className="text-xs text-gray-500">{new Date(log.date).toLocaleDateString()}</span>
+                      <span className="font-bold text-emerald-600">{log.duration} {t('minutes')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : viewMode === 'list' ? (
+              <div className="bg-white rounded-lg shadow-md divide-y divide-gray-200">
+                {filteredAndSortedLogs.map(log => (
+                  <div key={log.id} className="p-4 flex items-start space-x-4 hover:bg-gray-50">
+                    <div className="bg-emerald-100 rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center">
+                      <i className={`${getIconForEntityType(log.entityType)} text-emerald-600`}></i>
                     </div>
                     <div className="flex-grow">
                     <p className="font-semibold text-gray-800">{log.entityTitle}</p>
                     <p className="text-sm text-gray-600">{log.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">{new Date(log.date).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
                     <p className="font-bold text-emerald-600">{log.duration} {t('minutes')}</p>
-                    <p className="text-xs text-gray-400">{new Date(log.date).toLocaleDateString()}</p>
+                      <button
+                        onClick={() => setDeletingLogId(log.id)}
+                        className="text-red-500 hover:text-red-700 text-sm mt-2"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
                     </div>
                 </div>
-                ))
+                ))}
+              </div>
             ) : (
-                <div className="text-center py-16 text-gray-500">
-                <i className="fas fa-clock fa-3x mb-4"></i>
-                <p>{t('no_time_logs_found')}</p>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('entity')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('description')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('date')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('duration')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredAndSortedLogs.map(log => (
+                      <tr key={log.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center">
+                            <i className={`${getIconForEntityType(log.entityType)} text-emerald-600 mr-2`}></i>
+                            <span className="font-medium">{log.entityTitle}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{log.description}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{new Date(log.date).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 font-semibold text-emerald-600">{log.duration} {t('minutes')}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => setDeletingLogId(log.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-16 text-center">
+              <i className="fas fa-clock fa-4x text-gray-300 mb-4"></i>
+              <p className="text-gray-500 text-lg">{t('no_time_logs_found')}</p>
+              <button
+                onClick={() => setLogModalOpen(true)}
+                className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700"
+              >
+                <i className="fas fa-plus mr-2"></i>
+                {t('log_time')}
+              </button>
                 </div>
             )}
-            </div>
         </div>
       )}
       
+      {/* Calendar Tab */}
       {activeTab === 'calendar' && (
           <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
               <div className="flex justify-between items-center mb-4">
-                  <button onClick={() => setCurrentDate(d => new Date(d.setDate(d.getDate() - 7)))} className="p-2 text-gray-600 hover:text-emerald-600"><i className="fas fa-chevron-left mr-2"></i> {t('previous_week')}</button>
+            <button 
+              onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 7)))} 
+              className="p-2 text-gray-600 hover:text-emerald-600"
+            >
+              <i className="fas fa-chevron-left mr-2"></i> {t('previous_week')}
+            </button>
                   <h2 className="text-xl font-bold">{startOfWeek.toLocaleDateString(language, {month: 'long', year: 'numeric'})}</h2>
-                  <button onClick={() => setCurrentDate(d => new Date(d.setDate(d.getDate() + 7)))} className="p-2 text-gray-600 hover:text-emerald-600">{t('next_week')} <i className="fas fa-chevron-right ml-2"></i></button>
+            <button 
+              onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 7)))} 
+              className="p-2 text-gray-600 hover:text-emerald-600"
+            >
+              {t('next_week')} <i className="fas fa-chevron-right ml-2"></i>
+            </button>
               </div>
-               <button onClick={() => setCurrentDate(new Date())} className="block mx-auto text-sm text-emerald-600 font-semibold mb-4">{t('today')}</button>
+          <button 
+            onClick={() => setCurrentDate(new Date())} 
+            className="block mx-auto text-sm text-emerald-600 font-semibold mb-4"
+          >
+            {t('today')}
+          </button>
               <div className="grid grid-cols-7 border-t border-l">
                   {weekDays.map(day => (
                       <div key={day.toISOString()} className="border-r border-b min-h-[200px]">
@@ -304,7 +608,11 @@ const TimeTracking: React.FC<TimeTrackingProps> = ({ timeLogs, meetings, users, 
                           </div>
                           <div className="p-2 space-y-2">
                               {(meetingsByDay[day.toISOString().split('T')[0]] || []).map(meeting => (
-                                  <button key={meeting.id} onClick={() => setMeetingDetailOpen(meeting)} className="w-full text-left p-2 rounded-md bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors">
+                    <button 
+                      key={meeting.id} 
+                      onClick={() => setMeetingDetailOpen(meeting)} 
+                      className="w-full text-left p-2 rounded-md bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors"
+                    >
                                       <p className="font-bold text-xs truncate">{meeting.title}</p>
                                       <p className="text-xs">{new Date(meeting.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                   </button>
@@ -319,10 +627,65 @@ const TimeTracking: React.FC<TimeTrackingProps> = ({ timeLogs, meetings, users, 
           </div>
       )}
 
-      {isLogModalOpen && <LogTimeModal onClose={() => {setLogModalOpen(false); setLogInitialValues(null);}} onSave={handleSaveLog} projects={projects} courses={courses} user={user} initialValues={logInitialValues} />}
-      {isMeetingFormOpen && <MeetingFormModal meeting={editingMeeting} users={users} onClose={() => {setMeetingFormOpen(false); setEditingMeeting(null);}} onSave={handleSaveMeeting} />}
-      {isMeetingDetailOpen && <MeetingDetailModal meeting={isMeetingDetailOpen} onClose={() => setMeetingDetailOpen(null)} onEdit={handleEditMeeting} onDelete={(id) => {setDeletingMeetingId(id); setMeetingDetailOpen(null);}} onLogTime={handleLogTimeForMeeting}/>}
-      {deletingMeetingId && <ConfirmationModal title={t('delete_meeting')} message={t('confirm_delete_message')} onConfirm={() => {onDeleteMeeting(deletingMeetingId); setDeletingMeetingId(null);}} onCancel={() => setDeletingMeetingId(null)} />}
+      {/* Modals */}
+      {isLogModalOpen && (
+        <LogTimeModal 
+          onClose={() => {
+            setLogModalOpen(false); 
+            setLogInitialValues(null);
+          }} 
+          onSave={handleSaveLog} 
+          projects={projects} 
+          courses={courses} 
+          user={user} 
+          initialValues={logInitialValues} 
+        />
+      )}
+      {isMeetingFormOpen && (
+        <MeetingFormModal 
+          meeting={editingMeeting} 
+          users={users} 
+          onClose={() => {
+            setMeetingFormOpen(false); 
+            setEditingMeeting(null);
+          }} 
+          onSave={handleSaveMeeting} 
+        />
+      )}
+      {isMeetingDetailOpen && (
+        <MeetingDetailModal 
+          meeting={isMeetingDetailOpen} 
+          onClose={() => setMeetingDetailOpen(null)} 
+          onEdit={handleEditMeeting} 
+          onDelete={(id) => {
+            setDeletingMeetingId(id); 
+            setMeetingDetailOpen(null);
+          }} 
+          onLogTime={handleLogTimeForMeeting}
+        />
+      )}
+      {deletingMeetingId && (
+        <ConfirmationModal 
+          title={t('delete_meeting')} 
+          message={t('confirm_delete_message')} 
+          onConfirm={() => {
+            onDeleteMeeting(deletingMeetingId); 
+            setDeletingMeetingId(null);
+          }} 
+          onCancel={() => setDeletingMeetingId(null)} 
+        />
+      )}
+      {deletingLogId && (
+        <ConfirmationModal 
+          title={t('delete_log')} 
+          message={t('confirm_delete_log_message')} 
+          onConfirm={() => {
+            onDeleteTimeLog(deletingLogId);
+            setDeletingLogId(null);
+          }} 
+          onCancel={() => setDeletingLogId(null)} 
+        />
+      )}
     </>
   );
 };

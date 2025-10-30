@@ -32,7 +32,17 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onLoginSuccess }) => {
       console.log('📋 Résultat de connexion:', result);
       
       if (!result.success) {
-        setError(result.error?.message || 'Erreur de connexion');
+        const errorMessage = result.error?.message || 'Erreur de connexion';
+        
+        // Messages d'erreur plus clairs
+        if (errorMessage.includes('Invalid login credentials') || errorMessage.includes('Invalid login')) {
+          setError('Email ou mot de passe incorrect. Vérifiez vos identifiants ou créez un compte.');
+        } else if (errorMessage.includes('Email not confirmed')) {
+          setError('Votre email n\'a pas été confirmé. Vérifiez votre boîte de réception.');
+        } else {
+          setError(errorMessage);
+        }
+        
         console.error('❌ Erreur de connexion:', result.error);
       } else {
         console.log('✅ Connexion réussie !');
@@ -146,7 +156,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onLoginSuccess }) => {
                   onClick={() => setShowUsersList(!showUsersList)}
                   className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
                 >
-                  👥 Voir les utilisateurs SENEGEL disponibles
+                  👥 Voir les utilisateurs disponibles
                 </button>
                 <br/>
                 <button

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
-import { Language } from '../types';
+import { Language, User } from '../types';
+import UserProfileEdit from './UserProfileEdit';
 
 interface SettingsProps {
   reminderDays: number;
@@ -13,6 +14,7 @@ const Settings: React.FC<SettingsProps> = ({ reminderDays, onSetReminderDays }) 
   const { user } = useAuth();
   const [skills, setSkills] = useState(user?.skills || []);
   const [newSkill, setNewSkill] = useState('');
+  const [isProfileModalOpen, setProfileModalOpen] = useState(false);
 
   const handleAddSkill = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +29,19 @@ const Settings: React.FC<SettingsProps> = ({ reminderDays, onSetReminderDays }) 
     setSkills(skills.filter(skill => skill !== skillToRemove));
   };
 
+  const handleSaveProfile = async (updatedUser: Partial<User>) => {
+    // TODO: Appeler l'API pour sauvegarder le profil
+    console.log('Profil mis à jour:', updatedUser);
+  };
+
+  // Générer les initiales pour l'avatar
+  const getInitials = (name: string): string => {
+    const parts = name.split(' ');
+    const firstInitial = parts[0]?.charAt(0)?.toUpperCase() || '';
+    const lastInitial = parts[parts.length - 1]?.charAt(0)?.toUpperCase() || '';
+    return `${firstInitial}${lastInitial}` || 'U';
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800">{t('settings_title')}</h1>
@@ -34,13 +49,39 @@ const Settings: React.FC<SettingsProps> = ({ reminderDays, onSetReminderDays }) 
       <div className="mt-8 max-w-2xl space-y-8">
         {/* Profile Settings */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold text-gray-800 border-b pb-3 mb-4">{t('profile')}</h2>
+          <div className="flex items-center justify-between border-b pb-3 mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">{t('profile')}</h2>
+            <button 
+              onClick={() => setProfileModalOpen(true)}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+            >
+              <i className="fas fa-user-edit mr-2"></i>
+              Modifier le profil
+            </button>
+          </div>
           <div className="flex items-center space-x-4">
-            <img src={user?.avatar} alt={user?.name} className="w-20 h-20 rounded-full"/>
-            <div>
+            {user?.avatar && !user.avatar.startsWith('data:image') ? (
+              <img 
+                src={user.avatar} 
+                alt={user?.name} 
+                className="w-20 h-20 rounded-full border-2 border-emerald-500 object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.removeAttribute('style');
+                }}
+              />
+            ) : null}
+            <div 
+              className={`w-20 h-20 rounded-full border-2 border-emerald-500 bg-gradient-to-br from-emerald-500 via-green-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold ${user?.avatar && !user.avatar.startsWith('data:image') ? 'hidden' : ''}`}
+            >
+              {user ? getInitials(user.name) : 'U'}
+            </div>
+            <div className="flex-1">
               <p className="font-bold text-xl">{user?.name}</p>
               <p className="text-gray-500">{user?.email}</p>
               <p className="text-sm capitalize text-emerald-600 font-semibold mt-1">{t(user!.role)}</p>
+              {user?.phone && <p className="text-gray-500 text-sm mt-1">{user.phone}</p>}
+              {user?.location && <p className="text-gray-500 text-sm mt-1">{user.location}</p>}
             </div>
           </div>
         </div>
@@ -108,6 +149,15 @@ const Settings: React.FC<SettingsProps> = ({ reminderDays, onSetReminderDays }) 
           </div>
         </div>
       </div>
+
+      {/* Modal de modification du profil */}
+      {isProfileModalOpen && user && (
+        <UserProfileEdit 
+          user={user}
+          onClose={() => setProfileModalOpen(false)}
+          onSave={handleSaveProfile}
+        />
+      )}
     </div>
   );
 };

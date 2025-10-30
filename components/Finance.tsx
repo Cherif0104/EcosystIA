@@ -633,21 +633,21 @@ interface FinanceProps {
   recurringExpenses: RecurringExpense[];
   budgets: Budget[];
   projects: Project[];
-  onAddInvoice: (invoice: Omit<Invoice, 'id'>) => void;
-  onUpdateInvoice: (invoice: Invoice) => void;
-  onDeleteInvoice: (invoiceId: number) => void;
-  onAddExpense: (expense: Omit<Expense, 'id'>) => void;
-  onUpdateExpense: (expense: Expense) => void;
-  onDeleteExpense: (expenseId: number) => void;
-  onAddRecurringInvoice: (data: Omit<RecurringInvoice, 'id'>) => void;
-  onUpdateRecurringInvoice: (data: RecurringInvoice) => void;
-  onDeleteRecurringInvoice: (id: number) => void;
-  onAddRecurringExpense: (data: Omit<RecurringExpense, 'id'>) => void;
-  onUpdateRecurringExpense: (data: RecurringExpense) => void;
-  onDeleteRecurringExpense: (id: number) => void;
-  onAddBudget: (budget: Omit<Budget, 'id'>) => void;
-  onUpdateBudget: (budget: Budget) => void;
-  onDeleteBudget: (budgetId: number) => void;
+  onAddInvoice: (invoice: Omit<Invoice, 'id'>) => Promise<void> | void;
+  onUpdateInvoice: (invoice: Invoice) => Promise<void> | void;
+  onDeleteInvoice: (invoiceId: string) => Promise<void> | void;
+  onAddExpense: (expense: Omit<Expense, 'id'>) => Promise<void> | void;
+  onUpdateExpense: (expense: Expense) => Promise<void> | void;
+  onDeleteExpense: (expenseId: string) => Promise<void> | void;
+  onAddRecurringInvoice: (data: Omit<RecurringInvoice, 'id'>) => Promise<void> | void;
+  onUpdateRecurringInvoice: (data: RecurringInvoice) => Promise<void> | void;
+  onDeleteRecurringInvoice: (id: string) => Promise<void> | void;
+  onAddRecurringExpense: (data: Omit<RecurringExpense, 'id'>) => Promise<void> | void;
+  onUpdateRecurringExpense: (data: RecurringExpense) => Promise<void> | void;
+  onDeleteRecurringExpense: (id: string) => Promise<void> | void;
+  onAddBudget: (budget: Omit<Budget, 'id'>) => Promise<void> | void;
+  onUpdateBudget: (budget: Budget) => Promise<void> | void;
+  onDeleteBudget: (budgetId: string) => Promise<void> | void;
 }
 
 const Finance: React.FC<FinanceProps> = (props) => {
@@ -672,8 +672,16 @@ const Finance: React.FC<FinanceProps> = (props) => {
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
     const [viewingBudget, setViewingBudget] = useState<Budget | null>(null);
-    const [deletingId, setDeletingId] = useState<{type: 'invoice' | 'expense' | 'recurringInvoice' | 'recurringExpense' | 'budget', id: number} | null>(null);
+    const [deletingId, setDeletingId] = useState<{type: 'invoice' | 'expense' | 'recurringInvoice' | 'recurringExpense' | 'budget', id: string} | null>(null);
     const [viewingReceipt, setViewingReceipt] = useState<Receipt | null>(null);
+    
+    // États pour recherche, filtres, tri et vue
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue' | 'partially_paid'>('all');
+    const [expenseStatusFilter, setExpenseStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+    const [sortBy, setSortBy] = useState<'date' | 'amount' | 'status' | 'client'>('date');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('list');
 
     // Dashboard Metrics Calculations
     const totalRevenue = useMemo(() => {
@@ -732,6 +740,95 @@ const Finance: React.FC<FinanceProps> = (props) => {
         });
     }, [budgets, expenses]);
 
+    // Filtrage et tri des invoices
+    const filteredInvoices = useMemo(() => {
+        let filtered = invoices.filter(inv => {
+            // Recherche
+            const matchesSearch = searchQuery === '' || 
+                inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                inv.clientName.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            // Filtre par status
+            const matchesStatus = statusFilter === 'all' || 
+                (statusFilter === 'draft' && inv.status === 'Draft') ||
+                (statusFilter === 'sent' && inv.status === 'Sent') ||
+                (statusFilter === 'paid' && inv.status === 'Paid') ||
+                (statusFilter === 'overdue' && getInvoiceStatus(inv) === 'Overdue') ||
+                (statusFilter === 'partially_paid' && inv.status === 'Partially Paid');
+            
+            return matchesSearch && matchesStatus;
+        });
+
+        // Tri
+        filtered.sort((a, b) => {
+            let aValue: any, bValue: any;
+            if (sortBy === 'date') {
+                aValue = new Date(a.dueDate).getTime();
+                bValue = new Date(b.dueDate).getTime();
+            } else if (sortBy === 'amount') {
+                aValue = a.amount;
+                bValue = b.amount;
+            } else if (sortBy === 'status') {
+                aValue = a.status;
+                bValue = b.status;
+            } else if (sortBy === 'client') {
+                aValue = a.clientName.toLowerCase();
+                bValue = b.clientName.toLowerCase();
+            }
+            
+            if (sortOrder === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+
+        return filtered;
+    }, [invoices, searchQuery, statusFilter, sortBy, sortOrder]);
+
+    // Filtrage et tri des expenses
+    const filteredExpenses = useMemo(() => {
+        let filtered = expenses.filter(exp => {
+            // Recherche
+            const matchesSearch = searchQuery === '' || 
+                exp.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                exp.category.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            // Filtre par status
+            const matchesStatus = expenseStatusFilter === 'all' || 
+                (expenseStatusFilter === 'paid' && exp.status === 'Paid') ||
+                (expenseStatusFilter === 'unpaid' && exp.status === 'Unpaid');
+            
+            return matchesSearch && matchesStatus;
+        });
+
+        // Tri
+        filtered.sort((a, b) => {
+            let aValue: any, bValue: any;
+            if (sortBy === 'date') {
+                aValue = new Date(a.date).getTime();
+                bValue = new Date(b.date).getTime();
+            } else if (sortBy === 'amount') {
+                aValue = a.amount;
+                bValue = b.amount;
+            } else if (sortBy === 'status') {
+                aValue = a.status;
+                bValue = b.status;
+            } else {
+                aValue = a.description.toLowerCase();
+                bValue = b.description.toLowerCase();
+            }
+            
+            if (sortOrder === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+
+        return filtered;
+    }, [expenses, searchQuery, expenseStatusFilter, sortBy, sortOrder]);
+
     const canManage = user?.role === 'manager' || user?.role === 'administrator' || user?.role === 'super_administrator';
     
     const handleOpenInvoiceModal = (invoice: Invoice | null = null) => {
@@ -751,41 +848,41 @@ const Finance: React.FC<FinanceProps> = (props) => {
         setBudgetDetailModalOpen(true);
     };
 
-    const handleSaveInvoice = (data: Invoice | Omit<Invoice, 'id'>) => {
-        if('id' in data) { onUpdateInvoice(data); }
-        else { onAddInvoice(data); }
+    const handleSaveInvoice = async (data: Invoice | Omit<Invoice, 'id'>) => {
+        if('id' in data) { await onUpdateInvoice(data); }
+        else { await onAddInvoice(data); }
         setInvoiceModalOpen(false);
     }
     
-    const handleSaveExpense = (data: Expense | Omit<Expense, 'id'>) => {
-        if('id' in data) { onUpdateExpense(data); }
-        else { onAddExpense(data); }
+    const handleSaveExpense = async (data: Expense | Omit<Expense, 'id'>) => {
+        if('id' in data) { await onUpdateExpense(data); }
+        else { await onAddExpense(data); }
         setExpenseModalOpen(false);
     }
 
-    const handleSaveBudget = (data: Budget | Omit<Budget, 'id'>) => {
-        if('id' in data) { onUpdateBudget(data); }
-        else { onAddBudget(data); }
+    const handleSaveBudget = async (data: Budget | Omit<Budget, 'id'>) => {
+        if('id' in data) { await onUpdateBudget(data); }
+        else { await onAddBudget(data); }
         setBudgetModalOpen(false);
     }
     
-    const handleSaveRecurringInvoice = (data: Omit<RecurringInvoice, 'id'>) => {
-        onAddRecurringInvoice(data);
+    const handleSaveRecurringInvoice = async (data: Omit<RecurringInvoice, 'id'>) => {
+        await onAddRecurringInvoice(data);
         setInvoiceModalOpen(false);
     };
 
-    const handleSaveRecurringExpense = (data: Omit<RecurringExpense, 'id'>) => {
-        onAddRecurringExpense(data);
+    const handleSaveRecurringExpense = async (data: Omit<RecurringExpense, 'id'>) => {
+        await onAddRecurringExpense(data);
         setExpenseModalOpen(false);
     };
     
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if(!deletingId) return;
-        if(deletingId.type === 'invoice') { onDeleteInvoice(deletingId.id); }
-        else if (deletingId.type === 'expense') { onDeleteExpense(deletingId.id); }
-        else if (deletingId.type === 'recurringInvoice') { onDeleteRecurringInvoice(deletingId.id); }
-        else if (deletingId.type === 'recurringExpense') { onDeleteRecurringExpense(deletingId.id); }
-        else if (deletingId.type === 'budget') { onDeleteBudget(deletingId.id); }
+        if(deletingId.type === 'invoice') { await onDeleteInvoice(deletingId.id); }
+        else if (deletingId.type === 'expense') { await onDeleteExpense(deletingId.id); }
+        else if (deletingId.type === 'recurringInvoice') { await onDeleteRecurringInvoice(deletingId.id); }
+        else if (deletingId.type === 'recurringExpense') { await onDeleteRecurringExpense(deletingId.id); }
+        else if (deletingId.type === 'budget') { await onDeleteBudget(deletingId.id); }
         setDeletingId(null);
     }
     
@@ -799,9 +896,9 @@ const Finance: React.FC<FinanceProps> = (props) => {
         return invoice.status;
     }
 
-    const handleToggleExpenseStatus = (expense: Expense) => {
+    const handleToggleExpenseStatus = async (expense: Expense) => {
         const newStatus = expense.status === 'Paid' ? 'Unpaid' : 'Paid';
-        onUpdateExpense({ ...expense, status: newStatus });
+        await onUpdateExpense({ ...expense, status: newStatus });
     };
 
     const getNextDueDate = (item: RecurringInvoice | RecurringExpense): string => {
@@ -814,50 +911,227 @@ const Finance: React.FC<FinanceProps> = (props) => {
 
     return (
     <>
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800">{t('finance_title')}</h1>
-            <p className="mt-1 text-gray-600">{t('finance_subtitle')}</p>
-
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatCard title={t('total_revenue')} value={`$${totalRevenue.toFixed(2)}`} icon="fas fa-arrow-up" color="text-green-500" />
-                <StatCard title={t('total_expenses')} value={`$${totalExpenses.toFixed(2)}`} icon="fas fa-arrow-down" color="text-red-500" />
-                <StatCard title={t('net_income')} value={`$${netIncome.toFixed(2)}`} icon="fas fa-dollar-sign" color="text-blue-500" />
-                <StatCard title={t('total_outstanding_invoices')} value={`$${totalOutstandingInvoices.toFixed(2)}`} icon="fas fa-file-invoice" color="text-orange-500" />
-                <StatCard title={t('total_due_expenses')} value={`$${totalDueExpenses.toFixed(2)}`} icon="fas fa-money-bill-wave" color="text-yellow-500" />
-                <StatCard title={t('average_payment_time')} value={averagePaymentTime !== null ? `${averagePaymentTime} ${t('days')}` : 'N/A'} icon="fas fa-hourglass-half" color="text-purple-500" />
+        <div className="min-h-screen bg-gray-50">
+            {/* Header moderne avec gradient */}
+            <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h1 className="text-4xl font-bold mb-2">{t('finance_title')}</h1>
+                            <p className="text-emerald-50 text-sm">
+                                {t('finance_subtitle') || 'Gérez vos finances, factures, dépenses et budgets'}
+                            </p>
+                        </div>
+                        {canManage && activeTab !== 'recurring' && (
+                            <button 
+                                onClick={
+                                    activeTab === 'invoices' ? () => handleOpenInvoiceModal() :
+                                    activeTab === 'expenses' ? () => handleOpenExpenseModal() :
+                                    () => handleOpenBudgetModal()
+                                } 
+                                className="bg-white text-emerald-600 font-bold py-2 px-4 rounded-lg hover:bg-emerald-50 flex items-center shadow-md">
+                                <i className="fas fa-plus mr-2"></i>
+                                {
+                                    activeTab === 'invoices' ? t('new_invoice') :
+                                    activeTab === 'expenses' ? t('new_expense') :
+                                    t('new_budget')
+                                }
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            <div className="mt-8">
-                <div className="flex justify-between items-center border-b border-gray-200">
-                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                        <button onClick={() => setActiveTab('invoices')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'invoices' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('invoices')}</button>
-                        <button onClick={() => setActiveTab('expenses')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'expenses' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('expenses')}</button>
-                        <button onClick={() => setActiveTab('recurring')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'recurring' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('recurring')}</button>
-                        <button onClick={() => setActiveTab('budgets')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'budgets' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('budgets')}</button>
-                    </nav>
-                    {canManage && activeTab !== 'recurring' && (
-                        <button 
-                          onClick={
-                              activeTab === 'invoices' ? () => handleOpenInvoiceModal() :
-                              activeTab === 'expenses' ? () => handleOpenExpenseModal() :
-                              () => handleOpenBudgetModal()
-                          } 
-                          className="bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-emerald-700 flex items-center text-sm">
-                            <i className="fas fa-plus mr-2"></i>
-                            {
-                                activeTab === 'invoices' ? t('new_invoice') :
-                                activeTab === 'expenses' ? t('new_expense') :
-                                t('new_budget')
-                            }
-                        </button>
-                    )}
+            {/* Métriques Power BI style */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">{t('total_revenue')}</span>
+                            <i className="fas fa-arrow-up text-2xl text-green-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">{t('total_expenses')}</span>
+                            <i className="fas fa-arrow-down text-2xl text-red-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">${totalExpenses.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">{t('net_income')}</span>
+                            <i className="fas fa-dollar-sign text-2xl text-blue-500"></i>
+                        </div>
+                        <p className={`text-3xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            ${netIncome.toFixed(2)}
+                        </p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">{t('total_outstanding_invoices')}</span>
+                            <i className="fas fa-file-invoice text-2xl text-orange-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">${totalOutstandingInvoices.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">{t('total_due_expenses')}</span>
+                            <i className="fas fa-money-bill-wave text-2xl text-yellow-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">${totalDueExpenses.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-600">{t('average_payment_time')}</span>
+                            <i className="fas fa-hourglass-half text-2xl text-purple-500"></i>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">
+                            {averagePaymentTime !== null ? `${averagePaymentTime} ${t('days')}` : 'N/A'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Contenu principal avec tabs */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+                {/* Navigation tabs moderne */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <div className="border-b border-gray-200">
+                        <nav className="flex space-x-8 px-6" aria-label="Tabs">
+                            <button 
+                                onClick={() => setActiveTab('invoices')} 
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'invoices' 
+                                        ? 'border-emerald-500 text-emerald-600' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                {t('invoices')} ({invoices.length})
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('expenses')} 
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'expenses' 
+                                        ? 'border-emerald-500 text-emerald-600' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                {t('expenses')} ({expenses.length})
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('recurring')} 
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'recurring' 
+                                        ? 'border-emerald-500 text-emerald-600' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                {t('recurring')} ({recurringInvoices.length + recurringExpenses.length})
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('budgets')} 
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'budgets' 
+                                        ? 'border-emerald-500 text-emerald-600' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                {t('budgets')} ({budgets.length})
+                            </button>
+                        </nav>
+                    </div>
                 </div>
 
                 <div className="mt-6">
                     {activeTab === 'invoices' && (
-                        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
+                        <>
+                            {/* Barre de recherche et filtres pour Invoices */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                                <div className="flex flex-wrap items-center gap-4">
+                                    {/* Recherche */}
+                                    <div className="flex-1 min-w-[200px]">
+                                        <div className="relative">
+                                            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                            <input
+                                                type="text"
+                                                placeholder={t('search') || 'Rechercher...'}
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Filtre par statut */}
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value as any)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    >
+                                        <option value="all">{t('all_statuses') || 'Tous les statuts'}</option>
+                                        <option value="draft">{t('draft') || 'Brouillon'}</option>
+                                        <option value="sent">{t('sent') || 'Envoyé'}</option>
+                                        <option value="paid">{t('paid') || 'Payé'}</option>
+                                        <option value="partially_paid">{t('partially_paid') || 'Partiellement payé'}</option>
+                                        <option value="overdue">{t('overdue') || 'En retard'}</option>
+                                    </select>
+
+                                    {/* Tri */}
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value as any)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    >
+                                        <option value="date">{t('sort_by_date') || 'Trier par date'}</option>
+                                        <option value="amount">{t('sort_by_amount') || 'Trier par montant'}</option>
+                                        <option value="status">{t('sort_by_status') || 'Trier par statut'}</option>
+                                        <option value="client">{t('sort_by_client') || 'Trier par client'}</option>
+                                    </select>
+
+                                    {/* Ordre de tri */}
+                                    <button
+                                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                                        title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+                                    >
+                                        <i className={`fas ${sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} mr-2`}></i>
+                                        {sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+                                    </button>
+                                </div>
+
+                                {/* Compteur de résultats */}
+                                <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-600">
+                                    {filteredInvoices.length} {filteredInvoices.length > 1 ? 'factures trouvées' : 'facture trouvée'}
+                                    {searchQuery && (
+                                        <span className="ml-2">
+                                            pour "{searchQuery}"
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {filteredInvoices.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+                                    <i className="fas fa-file-invoice text-6xl text-gray-300 mb-4"></i>
+                                    <p className="text-gray-600 text-lg mb-2">
+                                        {searchQuery || statusFilter !== 'all' ? 'Aucune facture ne correspond aux critères' : 'Aucune facture'}
+                                    </p>
+                                    {canManage && (
+                                        <button
+                                            onClick={() => handleOpenInvoiceModal()}
+                                            className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-emerald-700"
+                                        >
+                                            <i className="fas fa-plus mr-2"></i>
+                                            {t('new_invoice')}
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
                                 <thead className="bg-gray-50 text-left text-xs text-gray-700 uppercase">
                                     <tr>
                                         <th className="px-6 py-3">{t('invoice_number')}</th>
@@ -870,7 +1144,7 @@ const Finance: React.FC<FinanceProps> = (props) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {invoices.map(inv => {
+                                    {filteredInvoices.map(inv => {
                                         const finalStatus = getInvoiceStatus(inv);
                                         return (
                                             <tr key={inv.id} className="hover:bg-gray-50">
@@ -904,11 +1178,92 @@ const Finance: React.FC<FinanceProps> = (props) => {
                             </table>
                         </div>
                         </div>
+                            )}
+                        </>
                     )}
                     {activeTab === 'expenses' && (
-                         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
+                        <>
+                            {/* Barre de recherche et filtres pour Expenses */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                                <div className="flex flex-wrap items-center gap-4">
+                                    {/* Recherche */}
+                                    <div className="flex-1 min-w-[200px]">
+                                        <div className="relative">
+                                            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                            <input
+                                                type="text"
+                                                placeholder={t('search') || 'Rechercher...'}
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Filtre par statut */}
+                                    <select
+                                        value={expenseStatusFilter}
+                                        onChange={(e) => setExpenseStatusFilter(e.target.value as any)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    >
+                                        <option value="all">{t('all_statuses') || 'Tous les statuts'}</option>
+                                        <option value="paid">{t('paid') || 'Payé'}</option>
+                                        <option value="unpaid">{t('unpaid') || 'Non payé'}</option>
+                                    </select>
+
+                                    {/* Tri */}
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value as any)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    >
+                                        <option value="date">{t('sort_by_date') || 'Trier par date'}</option>
+                                        <option value="amount">{t('sort_by_amount') || 'Trier par montant'}</option>
+                                        <option value="status">{t('sort_by_status') || 'Trier par statut'}</option>
+                                    </select>
+
+                                    {/* Ordre de tri */}
+                                    <button
+                                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
+                                        title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+                                    >
+                                        <i className={`fas ${sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} mr-2`}></i>
+                                        {sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+                                    </button>
+                                </div>
+
+                                {/* Compteur de résultats */}
+                                <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-600">
+                                    {filteredExpenses.length} {filteredExpenses.length > 1 ? 'dépenses trouvées' : 'dépense trouvée'}
+                                    {searchQuery && (
+                                        <span className="ml-2">
+                                            pour "{searchQuery}"
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {filteredExpenses.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+                                    <i className="fas fa-money-bill-wave text-6xl text-gray-300 mb-4"></i>
+                                    <p className="text-gray-600 text-lg mb-2">
+                                        {searchQuery || expenseStatusFilter !== 'all' ? 'Aucune dépense ne correspond aux critères' : 'Aucune dépense'}
+                                    </p>
+                                    {canManage && (
+                                        <button
+                                            onClick={() => handleOpenExpenseModal()}
+                                            className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-emerald-700"
+                                        >
+                                            <i className="fas fa-plus mr-2"></i>
+                                            {t('new_expense')}
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
                                 <thead className="bg-gray-50 text-left text-xs text-gray-700 uppercase">
                                     <tr>
                                         <th className="px-6 py-3">{t('status')}</th>
@@ -921,7 +1276,7 @@ const Finance: React.FC<FinanceProps> = (props) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                     {expenses.map(exp => (
+                                     {filteredExpenses.map(exp => (
                                     <tr key={exp.id} className={`hover:bg-gray-50 ${exp.status === 'Paid' ? 'bg-emerald-50' : ''}`}>
                                         <td className="px-6 py-4">
                                              <div className="flex items-center space-x-2">
@@ -964,6 +1319,8 @@ const Finance: React.FC<FinanceProps> = (props) => {
                             </table>
                         </div>
                         </div>
+                            )}
+                        </>
                     )}
                     {activeTab === 'recurring' && (
                         <div>

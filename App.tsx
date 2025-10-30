@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContextSupabase';
 import { authGuard } from './middleware/authGuard';
-import { mockCourses, mockJobs, mockProjects, mockGoals, mockContacts, mockDocuments, mockAllUsers, mockTimeLogs, mockLeaveRequests, mockInvoices, mockExpenses, mockRecurringInvoices, mockRecurringExpenses, mockBudgets, mockMeetings } from './constants/data';
+import { mockProjects, mockGoals } from './constants/data';
 import { Course, Job, Project, Objective, Contact, Document, User, Role, TimeLog, LeaveRequest, Invoice, Expense, AppNotification, RecurringInvoice, RecurringExpense, RecurrenceFrequency, Budget, Meeting } from './types';
 import { useLocalization } from './contexts/LocalizationContext';
 import DataAdapter from './services/dataAdapter';
@@ -19,6 +19,8 @@ import Projects from './components/Projects';
 import GenAILab from './components/GenAILab';
 import CourseDetail from './components/CourseDetail';
 import CourseManagement from './components/CourseManagement';
+import JobManagement from './components/JobManagement';
+import LeaveManagementAdmin from './components/LeaveManagementAdmin';
 import Analytics from './components/Analytics';
 import TalentAnalytics from './components/TalentAnalytics';
 import Goals from './components/Goals';
@@ -36,7 +38,11 @@ const App: React.FC = () => {
   const { user, signIn } = useAuth();
   const { t } = useLocalization();
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
-  const [currentView, setCurrentView] = useState('dashboard');
+  
+  // Récupérer la vue précédente depuis localStorage (pour éviter le flash au refresh)
+  const savedView = typeof window !== 'undefined' ? localStorage.getItem('lastView') : null;
+  const [currentView, setCurrentView] = useState(savedView || 'dashboard');
+  
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -44,23 +50,44 @@ const App: React.FC = () => {
   const [loadingOperation, setLoadingOperation] = useState<string | null>(null);
   
   // Lifted State
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
-  const [jobs, setJobs] = useState<Job[]>(mockJobs);
+  const [courses, setCourses] = useState<Course[]>([]); // Plus de données mockées - uniquement Supabase
+  const [jobs, setJobs] = useState<Job[]>([]); // Plus de données mockées - uniquement Supabase
   const [projects, setProjects] = useState<Project[]>([]); // Plus de données mockées - uniquement Supabase
   const [objectives, setObjectives] = useState<Objective[]>(mockGoals);
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
-  const [users, setUsers] = useState<User[]>(mockAllUsers);
-  const [timeLogs, setTimeLogs] = useState<TimeLog[]>(mockTimeLogs);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(mockLeaveRequests);
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
-  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
-  const [recurringInvoices, setRecurringInvoices] = useState<RecurringInvoice[]>(mockRecurringInvoices);
-  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(mockRecurringExpenses);
-  const [budgets, setBudgets] = useState<Budget[]>(mockBudgets);
-  const [meetings, setMeetings] = useState<Meeting[]>(mockMeetings);
+  const [contacts, setContacts] = useState<Contact[]>([]); // Plus de données mockées - uniquement Supabase
+  const [documents, setDocuments] = useState<Document[]>([]); // Plus de données mockées - uniquement Supabase
+  const [users, setUsers] = useState<User[]>([]); // Plus de données mockées - uniquement Supabase
+  const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]); // Plus de données mockées - uniquement Supabase
+  const [expenses, setExpenses] = useState<Expense[]>([]); // Plus de données mockées - uniquement Supabase
+  const [recurringInvoices, setRecurringInvoices] = useState<RecurringInvoice[]>([]); // Plus de données mockées - uniquement Supabase
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]); // Plus de données mockées - uniquement Supabase
+  const [budgets, setBudgets] = useState<Budget[]>([]); // Plus de données mockées - uniquement Supabase
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [reminderDays, setReminderDays] = useState<number>(3);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+
+  // Handler pour setView qui persiste dans localStorage
+  const handleSetView = (view: string) => {
+    setCurrentView(view);
+    
+    // Persister la vue sauf pour login/signup
+    if (view !== 'login' && view !== 'signup') {
+      localStorage.setItem('lastView', view);
+    }
+    
+    // Gérer le selectedCourseId
+    if (view !== 'course_detail') {
+      setSelectedCourseId(null);
+    }
+    
+    // Fermer la sidebar sur mobile
+    if(window.innerWidth < 1024) { 
+        setSidebarOpen(false);
+    }
+  };
 
   // Initialisation avec protection de routes
   useEffect(() => {
@@ -74,12 +101,14 @@ const App: React.FC = () => {
           // L'utilisateur reste sur la page actuelle (pas de redirection)
         } else {
           console.log('🔒 Utilisateur non authentifié - redirection vers login');
+          // Ne pas utiliser handleSetView ici car on est en train d'initialiser
           setCurrentView('login');
         }
         
         setIsInitialized(true);
       } catch (error) {
         console.error('Erreur initialisation app:', error);
+        // Ne pas utiliser handleSetView ici car on est en train d'initialiser
         setCurrentView('login');
         setIsInitialized(true);
       }
@@ -109,10 +138,113 @@ const App: React.FC = () => {
           setObjectives(objectivesData);
           
           console.log('✅ Objectifs chargés depuis Supabase:', objectivesData.length, 'objectifs');
+          
+          // Charger les utilisateurs depuis Supabase
+          console.log('🔄 Chargement des utilisateurs depuis Supabase...');
+          const usersData = await DataAdapter.getUsers();
+          setUsers(usersData);
+          
+          console.log('✅ Utilisateurs chargés depuis Supabase:', usersData.length, 'utilisateurs');
+          
+          // Charger les time logs depuis Supabase
+          console.log('🔄 Chargement des time logs depuis Supabase...');
+          const timeLogsData = await DataAdapter.getTimeLogs();
+          setTimeLogs(timeLogsData);
+          
+          console.log('✅ Time logs chargés depuis Supabase:', timeLogsData.length, 'logs');
+          
+          // Charger les meetings depuis Supabase
+          console.log('🔄 Chargement des meetings depuis Supabase...');
+          const meetingsData = await DataAdapter.getMeetings();
+          setMeetings(meetingsData);
+          
+          console.log('✅ Meetings chargés depuis Supabase:', meetingsData.length, 'meetings');
+          
+          // Charger les leave requests depuis Supabase
+          console.log('🔄 Chargement des demandes de congé depuis Supabase...');
+          const leaveRequestsData = await DataAdapter.getLeaveRequests();
+          setLeaveRequests(leaveRequestsData);
+          
+          console.log('✅ Demandes de congé chargées depuis Supabase:', leaveRequestsData.length, 'demandes');
+          
+          // Charger les invoices depuis Supabase
+          console.log('🔄 Chargement des factures depuis Supabase...');
+          const invoicesData = await DataAdapter.getInvoices();
+          setInvoices(invoicesData);
+          
+          console.log('✅ Factures chargées depuis Supabase:', invoicesData.length, 'factures');
+          
+          // Charger les expenses depuis Supabase
+          console.log('🔄 Chargement des dépenses depuis Supabase...');
+          const expensesData = await DataAdapter.getExpenses();
+          setExpenses(expensesData);
+          
+          console.log('✅ Dépenses chargées depuis Supabase:', expensesData.length, 'dépenses');
+          
+          // Charger les recurring invoices depuis Supabase
+          console.log('🔄 Chargement des factures récurrentes depuis Supabase...');
+          const recurringInvoicesData = await DataAdapter.getRecurringInvoices();
+          setRecurringInvoices(recurringInvoicesData);
+          
+          console.log('✅ Factures récurrentes chargées depuis Supabase:', recurringInvoicesData.length, 'factures');
+          
+          // Charger les recurring expenses depuis Supabase
+          console.log('🔄 Chargement des dépenses récurrentes depuis Supabase...');
+          const recurringExpensesData = await DataAdapter.getRecurringExpenses();
+          setRecurringExpenses(recurringExpensesData);
+          
+          console.log('✅ Dépenses récurrentes chargées depuis Supabase:', recurringExpensesData.length, 'dépenses');
+          
+          // Charger les budgets depuis Supabase
+          console.log('🔄 Chargement des budgets depuis Supabase...');
+          const budgetsData = await DataAdapter.getBudgets();
+          setBudgets(budgetsData);
+          
+          console.log('✅ Budgets chargés depuis Supabase:', budgetsData.length, 'budgets');
+          
+          // Charger les documents depuis Supabase
+          console.log('🔄 Chargement des documents depuis Supabase...');
+          const documentsData = await DataAdapter.getDocuments();
+          setDocuments(documentsData);
+          
+          console.log('✅ Documents chargés depuis Supabase:', documentsData.length, 'documents');
+          
+          // Charger les cours depuis Supabase
+          console.log('🔄 Chargement des cours depuis Supabase...');
+          const coursesData = await DataAdapter.getCourses();
+          setCourses(coursesData);
+          
+          console.log('✅ Cours chargés depuis Supabase:', coursesData.length, 'cours');
+          
+          // Charger les jobs depuis Supabase
+          console.log('🔄 Chargement des jobs depuis Supabase...');
+          const jobsData = await DataAdapter.getJobs();
+          setJobs(jobsData);
+          
+          console.log('✅ Jobs chargés depuis Supabase:', jobsData.length, 'emplois');
+          
+          // Charger les contacts depuis Supabase
+          console.log('🔄 Chargement des contacts depuis Supabase...');
+          const contactsData = await DataAdapter.getContacts();
+          setContacts(contactsData);
+          
+          console.log('✅ Contacts chargés depuis Supabase:', contactsData.length, 'contacts');
         } else {
           console.log('🔄 Utilisateur non connecté - aucun projet à charger');
           setProjects([]);
           setObjectives([]);
+          setUsers([]);
+          setTimeLogs([]);
+          setMeetings([]);
+          setLeaveRequests([]);
+          setInvoices([]);
+          setExpenses([]);
+          setRecurringInvoices([]);
+          setRecurringExpenses([]);
+          setBudgets([]);
+          setDocuments([]);
+          setCourses([]);
+          setJobs([]);
         }
         
         setIsDataLoaded(true);
@@ -130,20 +262,19 @@ const App: React.FC = () => {
 
   // Protection de routes - rediriger vers login si non authentifié
   useEffect(() => {
-    // Ajouter un délai pour éviter les redirections prématurées
+    if (!isInitialized) return;
+    
     const timeoutId = setTimeout(() => {
-      if (isInitialized && !user && currentView !== 'login' && currentView !== 'signup') {
+      // Rediriger vers login seulement si l'utilisateur n'est pas connecté ET qu'on n'est pas déjà sur login/signup
+      if (!user && currentView !== 'login' && currentView !== 'signup') {
         console.log('🔒 Protection route - redirection vers login');
         setCurrentView('login');
-        setIsDataLoaded(false); // Reset pour permettre le rechargement
-      } else if (isInitialized && user && currentView === 'login') {
-        console.log('✅ Utilisateur connecté - redirection vers dashboard');
-        setCurrentView('dashboard');
+        setIsDataLoaded(false);
       }
-    }, 100); // Délai de 100ms pour éviter les redirections prématurées
+    }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [user, isInitialized]); // Retirer currentView des dépendances pour éviter les boucles
+  }, [user, isInitialized, currentView]); // Re-ajouté currentView pour une réactivité complète
 
   // Debug: Log de l'état utilisateur
   useEffect(() => {
@@ -157,72 +288,69 @@ const App: React.FC = () => {
 
   // Ancien useEffect supprimé - maintenant géré par le useEffect unifié ci-dessus
 
+  // --- Recurring Item Generation ---
+  useEffect(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
-  
-    // --- Recurring Item Generation ---
-    useEffect(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    const newInvoices: Invoice[] = [];
+    const updatedRecurringInvoices = recurringInvoices.map(ri => {
+      const lastGen = new Date(ri.lastGeneratedDate);
+      const nextGen = new Date(lastGen);
+      if (ri.frequency === 'Monthly') nextGen.setMonth(nextGen.getMonth() + 1);
+      else if (ri.frequency === 'Quarterly') nextGen.setMonth(nextGen.getMonth() + 3);
+      else if (ri.frequency === 'Annually') nextGen.setFullYear(nextGen.getFullYear() + 1);
 
-        const newInvoices: Invoice[] = [];
-        const updatedRecurringInvoices = recurringInvoices.map(ri => {
-            const lastGen = new Date(ri.lastGeneratedDate);
-            const nextGen = new Date(lastGen);
-            if (ri.frequency === 'Monthly') nextGen.setMonth(nextGen.getMonth() + 1);
-            else if (ri.frequency === 'Quarterly') nextGen.setMonth(nextGen.getMonth() + 3);
-            else if (ri.frequency === 'Annually') nextGen.setFullYear(nextGen.getFullYear() + 1);
-
-            if (today >= nextGen && (!ri.endDate || today <= new Date(ri.endDate))) {
-                newInvoices.push({
-                    id: Date.now() + Math.random(),
-                    invoiceNumber: `INV-${Date.now().toString().slice(-5)}`,
-                    clientName: ri.clientName,
-                    amount: ri.amount,
-                    dueDate: nextGen.toISOString().split('T')[0],
-                    status: 'Sent',
-                    recurringSourceId: ri.id,
-                });
-                return { ...ri, lastGeneratedDate: today.toISOString().split('T')[0] };
-            }
-            return ri;
+      if (today >= nextGen && (!ri.endDate || today <= new Date(ri.endDate))) {
+        newInvoices.push({
+          id: Date.now() + Math.random(),
+          invoiceNumber: `INV-${Date.now().toString().slice(-5)}`,
+          clientName: ri.clientName,
+          amount: ri.amount,
+          dueDate: nextGen.toISOString().split('T')[0],
+          status: 'Sent',
+          recurringSourceId: ri.id,
         });
+        return { ...ri, lastGeneratedDate: today.toISOString().split('T')[0] };
+      }
+      return ri;
+    });
 
-        if (newInvoices.length > 0) {
-            setInvoices(prev => [...prev, ...newInvoices]);
-            setRecurringInvoices(updatedRecurringInvoices);
-        }
+    if (newInvoices.length > 0) {
+      setInvoices(prev => [...prev, ...newInvoices]);
+      setRecurringInvoices(updatedRecurringInvoices);
+    }
 
-        const newExpenses: Expense[] = [];
-        const updatedRecurringExpenses = recurringExpenses.map(re => {
-            const lastGen = new Date(re.lastGeneratedDate);
-            const nextGen = new Date(lastGen);
-            if (re.frequency === 'Monthly') nextGen.setMonth(nextGen.getMonth() + 1);
-            else if (re.frequency === 'Quarterly') nextGen.setMonth(nextGen.getMonth() + 3);
-            else if (re.frequency === 'Annually') nextGen.setFullYear(nextGen.getFullYear() + 1);
+    const newExpenses: Expense[] = [];
+    const updatedRecurringExpenses = recurringExpenses.map(re => {
+      const lastGen = new Date(re.lastGeneratedDate);
+      const nextGen = new Date(lastGen);
+      if (re.frequency === 'Monthly') nextGen.setMonth(nextGen.getMonth() + 1);
+      else if (re.frequency === 'Quarterly') nextGen.setMonth(nextGen.getMonth() + 3);
+      else if (re.frequency === 'Annually') nextGen.setFullYear(nextGen.getFullYear() + 1);
 
-            if (today >= nextGen && (!re.endDate || today <= new Date(re.endDate))) {
-                 newExpenses.push({
-                    id: Date.now() + Math.random(),
-                    category: re.category,
-                    description: re.description,
-                    amount: re.amount,
-                    date: today.toISOString().split('T')[0],
-                    dueDate: nextGen.toISOString().split('T')[0],
-                    status: 'Unpaid',
-                    recurringSourceId: re.id,
-                });
-                return { ...re, lastGeneratedDate: today.toISOString().split('T')[0] };
-            }
-            return re;
+      if (today >= nextGen && (!re.endDate || today <= new Date(re.endDate))) {
+        newExpenses.push({
+          id: Date.now() + Math.random(),
+          category: re.category,
+          description: re.description,
+          amount: re.amount,
+          date: today.toISOString().split('T')[0],
+          dueDate: nextGen.toISOString().split('T')[0],
+          status: 'Unpaid',
+          recurringSourceId: re.id,
         });
+        return { ...re, lastGeneratedDate: today.toISOString().split('T')[0] };
+      }
+      return re;
+    });
 
-        if (newExpenses.length > 0) {
-            setExpenses(prev => [...prev, ...newExpenses]);
-            setRecurringExpenses(updatedRecurringExpenses);
-        }
+    if (newExpenses.length > 0) {
+      setExpenses(prev => [...prev, ...newExpenses]);
+      setRecurringExpenses(updatedRecurringExpenses);
+    }
 
-    }, []); // Run only on app load
+  }, []); // Run only on app load
 
 
   // --- Notification Generation ---
@@ -271,11 +399,21 @@ const App: React.FC = () => {
 
   }, [invoices, expenses, reminderDays, t]);
 
+  // Afficher Login uniquement si l'app est initialisée ET l'utilisateur n'est pas connecté
+  // Cela évite de montrer Login pendant le chargement de la session
+  if (!isInitialized) {
+    return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div></div>;
+  }
+
   if (!user) {
     if (authView === 'signup') {
         return <Signup onSwitchToLogin={() => setAuthView('login')} />;
     }
-    return <Login onSwitchToSignup={() => setAuthView('signup')} onLoginSuccess={() => setCurrentView('dashboard')} />;
+    return <Login onSwitchToSignup={() => setAuthView('login')} onLoginSuccess={() => {
+      // Récupérer la page précédente depuis localStorage ou utiliser dashboard par défaut
+      const lastView = localStorage.getItem('lastView') || 'dashboard';
+      handleSetView(lastView);
+    }} />;
   }
 
   // --- CRUD & State Handlers ---
@@ -290,14 +428,68 @@ const App: React.FC = () => {
     };
 
     // RECURRING INVOICES
-    const handleAddRecurringInvoice = (data: Omit<RecurringInvoice, 'id'>) => setRecurringInvoices(prev => [{ ...data, id: Date.now() }, ...prev]);
-    const handleUpdateRecurringInvoice = (updated: RecurringInvoice) => setRecurringInvoices(prev => prev.map(i => i.id === updated.id ? updated : i));
-    const handleDeleteRecurringInvoice = (id: number) => setRecurringInvoices(prev => prev.filter(i => i.id !== id));
+    const handleAddRecurringInvoice = async (data: Omit<RecurringInvoice, 'id'>) => {
+      try {
+        const newRecurringInvoice = await DataAdapter.createRecurringInvoice(data);
+        if (newRecurringInvoice) {
+          setRecurringInvoices(prev => [newRecurringInvoice, ...prev]);
+        }
+      } catch (error) {
+        console.error('Erreur création facture récurrente:', error);
+      }
+    };
+    const handleUpdateRecurringInvoice = async (updated: RecurringInvoice) => {
+      try {
+        const result = await DataAdapter.updateRecurringInvoice(updated.id, updated);
+        if (result) {
+          setRecurringInvoices(prev => prev.map(i => i.id === updated.id ? result : i));
+        }
+      } catch (error) {
+        console.error('Erreur mise à jour facture récurrente:', error);
+      }
+    };
+    const handleDeleteRecurringInvoice = async (id: string) => {
+      try {
+        const success = await DataAdapter.deleteRecurringInvoice(id);
+        if (success) {
+          setRecurringInvoices(prev => prev.filter(i => i.id !== id));
+        }
+      } catch (error) {
+        console.error('Erreur suppression facture récurrente:', error);
+      }
+    };
 
     // RECURRING EXPENSES
-    const handleAddRecurringExpense = (data: Omit<RecurringExpense, 'id'>) => setRecurringExpenses(prev => [{ ...data, id: Date.now() }, ...prev]);
-    const handleUpdateRecurringExpense = (updated: RecurringExpense) => setRecurringExpenses(prev => prev.map(e => e.id === updated.id ? updated : e));
-    const handleDeleteRecurringExpense = (id: number) => setRecurringExpenses(prev => prev.filter(e => e.id !== id));
+    const handleAddRecurringExpense = async (data: Omit<RecurringExpense, 'id'>) => {
+      try {
+        const newRecurringExpense = await DataAdapter.createRecurringExpense(data);
+        if (newRecurringExpense) {
+          setRecurringExpenses(prev => [newRecurringExpense, ...prev]);
+        }
+      } catch (error) {
+        console.error('Erreur création dépense récurrente:', error);
+      }
+    };
+    const handleUpdateRecurringExpense = async (updated: RecurringExpense) => {
+      try {
+        const result = await DataAdapter.updateRecurringExpense(updated.id, updated);
+        if (result) {
+          setRecurringExpenses(prev => prev.map(e => e.id === updated.id ? result : e));
+        }
+      } catch (error) {
+        console.error('Erreur mise à jour dépense récurrente:', error);
+      }
+    };
+    const handleDeleteRecurringExpense = async (id: string) => {
+      try {
+        const success = await DataAdapter.deleteRecurringExpense(id);
+        if (success) {
+          setRecurringExpenses(prev => prev.filter(e => e.id !== id));
+        }
+      } catch (error) {
+        console.error('Erreur suppression dépense récurrente:', error);
+      }
+    };
 
 
   // INVOICES
@@ -309,16 +501,28 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur création facture:', error);
-      // Fallback vers l'ancienne méthode
-      const fallbackInvoice: Invoice = { ...invoiceData, id: Date.now() };
-      setInvoices(prev => [fallbackInvoice, ...prev]);
+      // Pas de fallback mocké - uniquement Supabase
     }
   };
-    const handleUpdateInvoice = (updatedInvoice: Invoice) => {
-        setInvoices(prev => prev.map(i => i.id === updatedInvoice.id ? updatedInvoice : i));
+    const handleUpdateInvoice = async (updatedInvoice: Invoice) => {
+      try {
+        const result = await DataAdapter.updateInvoice(updatedInvoice.id, updatedInvoice);
+        if (result) {
+          setInvoices(prev => prev.map(i => i.id === updatedInvoice.id ? result : i));
+        }
+      } catch (error) {
+        console.error('Erreur mise à jour facture:', error);
+      }
     };
-    const handleDeleteInvoice = (invoiceId: number) => {
-        setInvoices(prev => prev.filter(i => i.id !== invoiceId));
+    const handleDeleteInvoice = async (invoiceId: string) => {
+      try {
+        const success = await DataAdapter.deleteInvoice(invoiceId);
+        if (success) {
+          setInvoices(prev => prev.filter(i => i.id !== invoiceId));
+        }
+      } catch (error) {
+        console.error('Erreur suppression facture:', error);
+      }
     };
 
   // EXPENSES
@@ -330,88 +534,199 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur création dépense:', error);
-      // Fallback vers l'ancienne méthode
-      const fallbackExpense: Expense = { ...expenseData, id: Date.now() };
-      setExpenses(prev => [fallbackExpense, ...prev]);
+      // Pas de fallback mocké - uniquement Supabase
     }
   };
-    const handleUpdateExpense = (updatedExpense: Expense) => {
-        setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+    const handleUpdateExpense = async (updatedExpense: Expense) => {
+      try {
+        const result = await DataAdapter.updateExpense(updatedExpense.id, updatedExpense);
+        if (result) {
+          setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? result : e));
+        }
+      } catch (error) {
+        console.error('Erreur mise à jour dépense:', error);
+      }
     };
-    const handleDeleteExpense = (expenseId: number) => {
-        setExpenses(prev => prev.filter(e => e.id !== expenseId));
+    const handleDeleteExpense = async (expenseId: string) => {
+      try {
+        const success = await DataAdapter.deleteExpense(expenseId);
+        if (success) {
+          setExpenses(prev => prev.filter(e => e.id !== expenseId));
+        }
+      } catch (error) {
+        console.error('Erreur suppression dépense:', error);
+      }
     };
     
     // BUDGETS
-    const handleAddBudget = (budgetData: Omit<Budget, 'id'>) => {
-        const newBudget: Budget = { ...budgetData, id: Date.now() };
-        setBudgets(prev => [newBudget, ...prev]);
+    const handleAddBudget = async (budgetData: Omit<Budget, 'id'>) => {
+      try {
+        const newBudget = await DataAdapter.createBudget(budgetData);
+        if (newBudget) {
+          setBudgets(prev => [newBudget, ...prev]);
+        }
+      } catch (error) {
+        console.error('Erreur création budget:', error);
+      }
     };
-    const handleUpdateBudget = (updatedBudget: Budget) => {
-        setBudgets(prev => prev.map(b => b.id === updatedBudget.id ? updatedBudget : b));
+    const handleUpdateBudget = async (updatedBudget: Budget) => {
+      try {
+        const result = await DataAdapter.updateBudget(updatedBudget.id, updatedBudget);
+        if (result) {
+          setBudgets(prev => prev.map(b => b.id === updatedBudget.id ? result : b));
+        }
+      } catch (error) {
+        console.error('Erreur mise à jour budget:', error);
+      }
     };
-    const handleDeleteBudget = (budgetId: number) => {
-        const budgetToDelete = budgets.find(b => b.id === budgetId);
-        if (!budgetToDelete) return;
-        
-        const itemIdsToDelete = new Set<string>();
-        budgetToDelete.budgetLines.forEach(line => {
-            line.items.forEach(item => {
+    const handleDeleteBudget = async (budgetId: string) => {
+      try {
+        const success = await DataAdapter.deleteBudget(budgetId);
+        if (success) {
+          setBudgets(prev => prev.filter(b => b.id !== budgetId));
+          // Unlink expenses from deleted budget items
+          const budgetToDelete = budgets.find(b => b.id === budgetId);
+          if (budgetToDelete) {
+            const itemIdsToDelete = new Set<string>();
+            budgetToDelete.budgetLines.forEach(line => {
+              line.items.forEach(item => {
                 itemIdsToDelete.add(item.id);
+              });
             });
-        });
 
-        // Unlink expenses from the deleted budget items
-        setExpenses(prev => prev.map(e => 
-            e.budgetItemId && itemIdsToDelete.has(e.budgetItemId) 
-            ? { ...e, budgetItemId: undefined } 
-            : e
-        ));
-
-        setBudgets(prev => prev.filter(b => b.id !== budgetId));
+            // Unlink expenses from the deleted budget items
+            setExpenses(prev => prev.map(e => 
+              e.budgetItemId && itemIdsToDelete.has(e.budgetItemId) 
+                ? { ...e, budgetItemId: undefined } 
+                : e
+            ));
+          }
+        }
+      } catch (error) {
+        console.error('Erreur suppression budget:', error);
+      }
     };
 
   // MEETINGS
-  const handleAddMeeting = (meetingData: Omit<Meeting, 'id'>) => {
-      const newMeeting: Meeting = { ...meetingData, id: Date.now() };
+  const handleAddMeeting = async (meetingData: Omit<Meeting, 'id'>) => {
+    try {
+      console.log('🔄 Création meeting avec données:', meetingData);
+      const newMeeting = await DataAdapter.createMeeting(meetingData);
       setMeetings(prev => [newMeeting, ...prev].sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
+      console.log('✅ Meeting créé:', newMeeting.id);
+    } catch (error) {
+      console.error('Erreur création meeting:', error);
+    }
   };
-  const handleUpdateMeeting = (updatedMeeting: Meeting) => {
-      setMeetings(prev => prev.map(m => m.id === updatedMeeting.id ? updatedMeeting : m).sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
+  
+  const handleUpdateMeeting = async (updatedMeeting: Meeting) => {
+    try {
+      console.log('🔄 Mise à jour meeting avec données:', updatedMeeting);
+      const updated = await DataAdapter.updateMeeting(updatedMeeting);
+      setMeetings(prev => prev.map(m => m.id === updated.id ? updated : m).sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
+      console.log('✅ Meeting mis à jour avec succès');
+    } catch (error) {
+      console.error('Erreur mise à jour meeting:', error);
+    }
   };
-  const handleDeleteMeeting = (meetingId: number) => {
+  
+  const handleDeleteMeeting = async (meetingId: number) => {
+    try {
+      console.log('🔄 Suppression meeting ID:', meetingId);
+      await DataAdapter.deleteMeeting(meetingId);
       setMeetings(prev => prev.filter(m => m.id !== meetingId));
+      console.log('✅ Meeting supprimé avec succès');
+    } catch (error) {
+      console.error('Erreur suppression meeting:', error);
+    }
   };
 
 
   // LEAVE REQUESTS
-  const handleAddLeaveRequest = (requestData: Omit<LeaveRequest, 'id' | 'userId' | 'userName' | 'userAvatar' | 'status'>) => {
+  const handleAddLeaveRequest = async (requestData: Omit<LeaveRequest, 'id' | 'userId' | 'status' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
-    const newRequest: LeaveRequest = {
-      id: Date.now(),
-      userId: user.id,
-      userName: user.name,
-      userAvatar: user.avatar,
-      status: 'Pending',
-      ...requestData,
-    };
-    setLeaveRequests(prev => [newRequest, ...prev]);
+    try {
+      console.log('🔄 Création demande de congé avec données:', requestData);
+      const newRequest = await DataAdapter.createLeaveRequest(requestData);
+      setLeaveRequests(prev => [newRequest, ...prev]);
+      console.log('✅ Demande de congé créée:', newRequest.id);
+    } catch (error) {
+      console.error('❌ Erreur création demande de congé:', error);
+      throw error;
+    }
   };
 
-  const handleUpdateLeaveRequestStatus = (requestId: number, status: 'Approved' | 'Rejected') => {
-      setLeaveRequests(prev => prev.map(req => req.id === requestId ? {...req, status} : req));
-  }
+  const handleUpdateLeaveRequest = async (id: string, status: 'approved' | 'rejected', reason?: string) => {
+    try {
+      console.log('🔄 Mise à jour demande de congé ID:', id, 'Statut:', status, 'Motif:', reason);
+      const updates: any = { status };
+      if (status === 'approved' && reason) {
+        updates.approvalReason = reason;
+      } else if (status === 'rejected' && reason) {
+        updates.rejectionReason = reason;
+      }
+      const updatedRequest = await DataAdapter.updateLeaveRequest(id, updates);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updatedRequest : req));
+      console.log('✅ Demande de congé mise à jour');
+    } catch (error) {
+      console.error('❌ Erreur mise à jour demande de congé:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteLeaveRequest = async (id: string) => {
+    try {
+      console.log('🔄 Suppression demande de congé ID:', id);
+      await DataAdapter.deleteLeaveRequest(id);
+      setLeaveRequests(prev => prev.filter(req => req.id !== id));
+      console.log('✅ Demande de congé supprimée');
+    } catch (error) {
+      console.error('❌ Erreur suppression demande de congé:', error);
+      throw error;
+    }
+  };
+
+  const handleUpdateLeaveDates = async (id: string, startDate: string, endDate: string, reason: string) => {
+    try {
+      console.log('🔄 Modification dates demande de congé ID:', id, 'Nouvelles dates:', startDate, 'au', endDate);
+      const updates = {
+        startDate,
+        endDate,
+        approvalReason: reason,
+        updatedReason: reason // Sauvegarder la raison de modification
+      };
+      const updatedRequest = await DataAdapter.updateLeaveRequest(id, updates);
+      setLeaveRequests(prev => prev.map(req => req.id === id ? updatedRequest : req));
+      console.log('✅ Dates de congé modifiées');
+    } catch (error) {
+      console.error('❌ Erreur modification dates:', error);
+      throw error;
+    }
+  };
 
 
   // TIME LOGS
-  const handleAddTimeLog = (logData: Omit<TimeLog, 'id' | 'userId'>) => {
+  const handleAddTimeLog = async (logData: Omit<TimeLog, 'id' | 'userId'>) => {
     if (!user) return;
-    const newLog: TimeLog = {
-      id: Date.now(),
-      userId: user.id,
-      ...logData,
-    };
-    setTimeLogs(prev => [newLog, ...prev]);
+    try {
+      console.log('🔄 Création time log avec données:', logData);
+      const newLog = await DataAdapter.createTimeLog(logData);
+      setTimeLogs(prev => [newLog, ...prev]);
+      console.log('✅ Time log créé:', newLog.id);
+    } catch (error) {
+      console.error('Erreur création time log:', error);
+    }
+  };
+
+  const handleDeleteTimeLog = async (logId: string) => {
+    try {
+      console.log('🔄 Suppression time log ID:', logId);
+      await DataAdapter.deleteTimeLog(logId);
+      setTimeLogs(prev => prev.filter(log => log.id !== logId));
+      console.log('✅ Time log supprimé avec succès');
+    } catch (error) {
+      console.error('Erreur suppression time log:', error);
+    }
   };
 
 
@@ -425,10 +740,71 @@ const App: React.FC = () => {
     })));
   };
 
+  const handleToggleActive = async (userId: string | number, isActive: boolean) => {
+    try {
+      console.log('🔄 Activation/désactivation utilisateur ID:', userId, 'Nouveau statut:', isActive);
+      
+      // Appel à Supabase via DataAdapter
+      const success = await DataAdapter.toggleUserActive(userId, isActive);
+      
+      if (success) {
+        // Mise à jour locale seulement si Supabase réussit
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, isActive } : u));
+        console.log('✅ Utilisateur mis à jour dans Supabase et localement');
+      } else {
+        throw new Error('Échec de la mise à jour dans Supabase');
+      }
+    } catch (error) {
+      console.error('❌ Erreur activation/désactivation utilisateur:', error);
+      alert('Erreur lors de la modification du statut de l\'utilisateur');
+    }
+  };
+
   // JOBS
-  const handleAddJob = (newJob: Job) => {
-    setJobs(prev => [newJob, ...prev]);
-    handleSetView('jobs');
+  const handleAddJob = async (newJob: Omit<Job, 'id' | 'applicants'>) => {
+    setIsLoading(true);
+    try {
+      console.log('🔄 Création job avec données:', newJob);
+      const createdJob = await DataAdapter.createJob(newJob);
+      setJobs(prev => [createdJob, ...prev]);
+      console.log('✅ Job créé:', createdJob.id);
+      handleSetView('jobs');
+    } catch (error) {
+      console.error('❌ Erreur création job:', error);
+      alert('Erreur lors de la création de l\'offre d\'emploi. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateJob = async (updatedJob: Job) => {
+    setIsLoading(true);
+    try {
+      console.log('🔄 Mise à jour job ID:', updatedJob.id);
+      const updated = await DataAdapter.updateJob(updatedJob);
+      setJobs(prev => prev.map(job => job.id === updated.id ? updated : job));
+      console.log('✅ Job mis à jour');
+    } catch (error) {
+      console.error('❌ Erreur mise à jour job:', error);
+      alert('Erreur lors de la mise à jour de l\'offre d\'emploi. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteJob = async (jobId: number) => {
+    setIsLoading(true);
+    try {
+      console.log('🔄 Suppression job ID:', jobId);
+      await DataAdapter.deleteJob(jobId);
+      setJobs(prev => prev.filter(job => job.id !== jobId));
+      console.log('✅ Job supprimé');
+    } catch (error) {
+      console.error('❌ Erreur suppression job:', error);
+      alert('Erreur lors de la suppression de l\'offre d\'emploi. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // PROJECTS
@@ -609,19 +985,37 @@ const App: React.FC = () => {
 
 
   // COURSES
-  const handleAddCourse = (courseData: Omit<Course, 'id' | 'progress'>) => {
-      const newCourse: Course = {
-          id: Date.now(),
-          progress: 0,
-          ...courseData,
-      };
-      setCourses(prev => [newCourse, ...prev]);
+  const handleAddCourse = async (courseData: Omit<Course, 'id'>) => {
+    try {
+      const newCourse = await DataAdapter.createCourse(courseData);
+      if (newCourse) {
+        setCourses(prev => [newCourse, ...prev]);
+      }
+    } catch (error) {
+      console.error('Erreur création cours:', error);
+    }
   };
-  const handleUpdateCourse = (updatedCourse: Course) => {
-      setCourses(prev => prev.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+  
+  const handleUpdateCourse = async (updatedCourse: Course) => {
+    try {
+      const updated = await DataAdapter.updateCourse(updatedCourse.id, updatedCourse);
+      if (updated) {
+        setCourses(prev => prev.map(c => c.id === updated.id ? updated : c));
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour cours:', error);
+    }
   };
-  const handleDeleteCourse = (courseId: number) => {
-      setCourses(prev => prev.filter(c => c.id !== courseId));
+  
+  const handleDeleteCourse = async (courseId: string) => {
+    try {
+      const success = await DataAdapter.deleteCourse(courseId);
+      if (success) {
+        setCourses(prev => prev.filter(c => c.id !== courseId));
+      }
+    } catch (error) {
+      console.error('Erreur suppression cours:', error);
+    }
   };
 
 
@@ -648,25 +1042,46 @@ const App: React.FC = () => {
 
   
   // DOCUMENTS (Knowledge Base)
-  const handleAddDocument = (newDocument: Document) => {
-      setDocuments(prev => [newDocument, ...prev]);
+  const handleAddDocument = async (documentData: Omit<Document, 'id'>) => {
+    try {
+      const newDocument = await DataAdapter.createDocument(documentData);
+      if (newDocument) {
+        setDocuments(prev => [newDocument, ...prev]);
+      }
+    } catch (error) {
+      console.error('Erreur création document:', error);
+    }
+  }
+
+  const handleUpdateDocument = async (updatedDocument: Document) => {
+    try {
+      const result = await DataAdapter.updateDocument(updatedDocument.id, updatedDocument);
+      if (result) {
+        setDocuments(prev => prev.map(d => d.id === updatedDocument.id ? result : d));
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour document:', error);
+    }
+  }
+
+  const handleDeleteDocument = async (documentId: string) => {
+    try {
+      const success = await DataAdapter.deleteDocument(documentId);
+      if (success) {
+        setDocuments(prev => prev.filter(d => d.id !== documentId));
+      }
+    } catch (error) {
+      console.error('Erreur suppression document:', error);
+    }
   }
 
   // --- View Management ---
 
-  const handleSetView = (view: string) => {
-    setCurrentView(view);
-    if (view !== 'course_detail') {
-      setSelectedCourseId(null);
-    }
-    if(window.innerWidth < 1024) { 
-        setSidebarOpen(false);
-    }
-  }
+  // handleSetView est déjà défini en haut du composant
 
-  const handleSelectCourse = (id: number) => {
+  const handleSelectCourse = (id: string) => {
     setSelectedCourseId(id);
-    setCurrentView('course_detail');
+    handleSetView('course_detail');
   }
 
   const renderView = () => {
@@ -676,7 +1091,8 @@ const App: React.FC = () => {
       case 'time_tracking':
         return <TimeTracking 
                     timeLogs={timeLogs} 
-                    onAddTimeLog={handleAddTimeLog} 
+                    onAddTimeLog={handleAddTimeLog}
+                    onDeleteTimeLog={handleDeleteTimeLog}
                     projects={projects} 
                     courses={courses}
                     meetings={meetings}
@@ -705,15 +1121,25 @@ const App: React.FC = () => {
                     onAddObjective={handleAddObjective}
                     onUpdateObjective={handleUpdateObjective}
                     onDeleteObjective={handleDeleteObjective}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                 />;
       case 'courses':
-        return <Courses courses={courses} onSelectCourse={handleSelectCourse} />;
+        return <Courses 
+          courses={courses}
+          users={users}
+          onSelectCourse={handleSelectCourse}
+          onAddCourse={handleAddCourse}
+          onUpdateCourse={handleUpdateCourse}
+          onDeleteCourse={handleDeleteCourse}
+        />;
       case 'course_detail':
         const course = courses.find(c => c.id === selectedCourseId);
         return course ? <CourseDetail course={course} onBack={() => handleSetView('courses')} timeLogs={timeLogs} onAddTimeLog={handleAddTimeLog} projects={projects} onUpdateCourse={handleUpdateCourse} /> : <Courses courses={courses} onSelectCourse={handleSelectCourse}/>;
       case 'course_management':
           return <CourseManagement 
-                    courses={courses} 
+                    courses={courses}
+                    users={users}
                     onAddCourse={handleAddCourse}
                     onUpdateCourse={handleUpdateCourse}
                     onDeleteCourse={handleDeleteCourse}
@@ -722,8 +1148,24 @@ const App: React.FC = () => {
         return <Jobs jobs={jobs} setJobs={setJobs} setView={handleSetView}/>;
       case 'create_job':
         return <CreateJob onAddJob={handleAddJob} onBack={() => handleSetView('jobs')} />;
+      case 'job_management':
+        return <JobManagement
+                  jobs={jobs}
+                  onAddJob={handleAddJob}
+                  onUpdateJob={handleUpdateJob}
+                  onDeleteJob={handleDeleteJob}
+                  onNavigate={handleSetView}
+                />;
+      case 'leave_management_admin':
+        return <LeaveManagementAdmin
+                  leaveRequests={leaveRequests}
+                  users={users}
+                  onUpdateLeaveRequest={handleUpdateLeaveRequest}
+                  onUpdateLeaveDates={handleUpdateLeaveDates}
+                  onDeleteLeaveRequest={handleDeleteLeaveRequest}
+                />;
       case 'user_management':
-        return <UserManagement users={users} onUpdateUser={handleUpdateUser} />;
+        return <UserManagement users={users} onUpdateUser={handleUpdateUser} onToggleActive={handleToggleActive} />;
       case 'crm_sales':
         return <CRM 
                     contacts={contacts} 
@@ -732,12 +1174,19 @@ const App: React.FC = () => {
                     onDeleteContact={handleDeleteContact}
                 />;
       case 'knowledge_base':
-        return <KnowledgeBase documents={documents} onAddDocument={handleAddDocument} />;
+        return <KnowledgeBase 
+                    documents={documents} 
+                    onAddDocument={handleAddDocument}
+                    onUpdateDocument={handleUpdateDocument}
+                    onDeleteDocument={handleDeleteDocument}
+                />;
       case 'leave_management':
         return <LeaveManagement 
                     leaveRequests={leaveRequests}
+                    users={users}
                     onAddLeaveRequest={handleAddLeaveRequest}
-                    onUpdateLeaveRequestStatus={handleUpdateLeaveRequestStatus}
+                    onUpdateLeaveRequest={handleUpdateLeaveRequest}
+                    onDeleteLeaveRequest={handleDeleteLeaveRequest}
                 />;
       case 'finance':
         return <Finance 

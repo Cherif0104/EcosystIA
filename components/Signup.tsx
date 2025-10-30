@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { useLocalization } from '../contexts/LocalizationContext';
 import NexusFlowIcon from './icons/NexusFlowIcon';
 import { Role } from '../types';
 import AuthAIAssistant from './AuthAIAssistant';
+import { AuthService } from '../services/authService';
 
 const PasswordStrengthMeter: React.FC<{ password?: string }> = ({ password = '' }) => {
     const { t } = useLocalization();
@@ -55,6 +56,47 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
   const [error, setError] = useState('');
   const [isAssistantOpen, setAssistantOpen] = useState(false);
   const [assistantInitialPrompt, setAssistantInitialPrompt] = useState('');
+  const [roleAvailability, setRoleAvailability] = useState<Record<string, { available: boolean; reason?: string }>>({});
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
+  // Charger la disponibilité des rôles au montage
+  useEffect(() => {
+    const loadRoleAvailability = async () => {
+      try {
+        setLoadingRoles(true);
+        const restrictedRoles: Role[] = ['administrator', 'manager', 'supervisor'];
+        const availability: Record<string, { available: boolean; reason?: string }> = {};
+
+        // Vérifier chaque rôle restreint
+        for (const role of restrictedRoles) {
+          const check = await AuthService.checkRoleAvailability(role);
+          availability[role] = check;
+        }
+
+        // super_administrator est toujours bloqué
+        availability['super_administrator'] = { 
+          available: false, 
+          reason: 'Réservé aux admins système' 
+        };
+
+        setRoleAvailability(availability);
+      } catch (error) {
+        console.error('Erreur chargement disponibilité rôles:', error);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    loadRoleAvailability();
+  }, []);
+
+  const isRoleAvailable = (roleValue: string): boolean => {
+    return roleAvailability[roleValue]?.available !== false;
+  };
+
+  const getRoleReason = (roleValue: string): string | undefined => {
+    return roleAvailability[roleValue]?.reason;
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,13 +111,28 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
       return;
     }
 
+    // Vérifier que le rôle est disponible
+    if (!isRoleAvailable(role)) {
+      setError(getRoleReason(role) || `Le rôle "${role}" n'est pas disponible. Un compte avec ce rôle existe déjà.`);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     const result = await signUp(email, password, name, phone, role);
     
     if (!result.success) {
-      setError(result.error?.message || 'Erreur lors de l\'inscription');
+      const errorMessage = result.error?.message || 'Erreur lors de l\'inscription';
+      
+      // Messages d'erreur plus clairs
+      if (errorMessage.includes('Email address') && errorMessage.includes('invalid')) {
+        setError('Email invalide. Veuillez utiliser un email valide (ex: votrenom@gmail.com, votrenom@outlook.com). Certains domaines sont bloqués par Supabase.');
+      } else if (errorMessage.includes('already registered')) {
+        setError('Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous.');
+      } else {
+        setError(errorMessage);
+      }
     }
     
     setLoading(false);
@@ -137,6 +194,9 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   placeholder="votre@email.com"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  ⚠️ Certains domaines peuvent être bloqués. Utilisez un email valide (Gmail, Outlook, etc.)
+                </p>
               </div>
 
               <div>
@@ -187,14 +247,37 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
                   </optgroup>
                   <optgroup label={t('staff_category')}>
                     <option value="intern">{t('intern')}</option>
-                    <option value="supervisor">{t('supervisor')}</option>
-                    <option value="manager">{t('manager')}</option>
-                    <option value="administrator">{t('administrator')}</option>
-                  </optgroup>
-                  <optgroup label={t('super_admin_category')}>
-                    <option value="super_administrator">{t('super_administrator')}</option>
+                    <option 
+                      value="supervisor" 
+                      disabled={!isRoleAvailable('supervisor')}
+                    >
+                      {t('supervisor')} {!isRoleAvailable('supervisor') && '(Déjà créé)'}
+                    </option>
+                    <option 
+                      value="manager" 
+                      disabled={!isRoleAvailable('manager')}
+                    >
+                      {t('manager')} {!isRoleAvailable('manager') && '(Déjà créé)'}
+                    </option>
+                    <option 
+                      value="administrator" 
+                      disabled={!isRoleAvailable('administrator')}
+                    >
+                      {t('administrator')} {!isRoleAvailable('administrator') && '(Déjà créé)'}
+                    </option>
+                    {/* Le rôle super_administrator ne peut pas être créé via l'interface publique - réservé aux admins système */}
                   </optgroup>
                 </select>
+                {role && !isRoleAvailable(role) && (
+                  <p className="mt-1 text-xs text-red-600">
+                    ⚠️ {getRoleReason(role) || `Un compte avec le rôle "${role}" existe déjà. Ce rôle est limité à un seul compte.`}
+                  </p>
+                )}
+                {role && isRoleAvailable(role) && ['administrator', 'manager', 'supervisor'].includes(role) && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    ℹ️ Ce rôle est limité à un seul compte. Une fois créé, il ne sera plus disponible pour les autres utilisateurs.
+                  </p>
+                )}
               </div>
 
               <div>

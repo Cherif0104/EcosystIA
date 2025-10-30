@@ -33,21 +33,7 @@ export class AuthGuard {
       
       if (error) {
         console.error('Erreur vérification session:', error);
-      }
-
-      // Vérifier aussi les sessions SENEGEL stockées
-      const storedSenegelSession = localStorage.getItem('supabase.auth.token');
-      if (storedSenegelSession) {
-        try {
-          const senegelSession = JSON.parse(storedSenegelSession);
-          if (senegelSession?.user) {
-            console.log('🇸🇳 Session SENEGEL valide trouvée');
-            return true;
-          }
-        } catch (e) {
-          console.error('Erreur parsing session SENEGEL:', e);
-          localStorage.removeItem('supabase.auth.token');
-        }
+        return false;
       }
 
       return !!session;
@@ -163,10 +149,7 @@ export class AuthGuard {
     this.stopInactivityMonitoring();
     
     try {
-      // Nettoyer les sessions SENEGEL stockées
-      localStorage.removeItem('supabase.auth.token');
-      
-      // Déconnexion Supabase standard
+      // Déconnexion Supabase
       await supabase.auth.signOut();
       console.log('✅ Déconnexion réussie');
     } catch (error) {

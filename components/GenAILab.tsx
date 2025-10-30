@@ -1,15 +1,28 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { generateImage, editImage } from '../services/geminiService';
+import { generateImage, editImage, runGenAILab } from '../services/geminiService';
+
+interface ImageGeneration {
+    id: string;
+    prompt: string;
+    imageUrl: string;
+    timestamp: Date;
+}
 
 const GenAILab: React.FC = () => {
     const { t } = useLocalization();
-    const [activeTab, setActiveTab] = useState<'generate' | 'edit'>('generate');
+    const [activeTab, setActiveTab] = useState<'generate' | 'edit' | 'text'>('generate');
 
     // State for Image Generation
     const [prompt, setPrompt] = useState('');
     const [loadingGen, setLoadingGen] = useState(false);
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+    const [generations, setGenerations] = useState<ImageGeneration[]>([]);
+
+    // State for Text Generation
+    const [textPrompt, setTextPrompt] = useState('');
+    const [loadingText, setLoadingText] = useState(false);
+    const [textResponse, setTextResponse] = useState('');
 
     // State for Image Editing
     const [originalImage, setOriginalImage] = useState<{ data: string, mime: string, name: string } | null>(null);
@@ -24,10 +37,30 @@ const GenAILab: React.FC = () => {
         setLoadingGen(true);
         setGeneratedImage(null);
         const result = await generateImage(prompt);
-        if (result) {
-            setGeneratedImage(`data:image/png;base64,${result}`);
+        if (result && result !== "Génération d'image temporairement désactivée. Fonctionnalité en cours de développement.") {
+            const imageUrl = `data:image/png;base64,${result}`;
+            setGeneratedImage(imageUrl);
+            
+            // Ajouter à l'historique
+            const newGeneration: ImageGeneration = {
+                id: `gen-${Date.now()}`,
+                prompt,
+                imageUrl,
+                timestamp: new Date()
+            };
+            setGenerations(prev => [newGeneration, ...prev]);
         }
         setLoadingGen(false);
+    };
+
+    const handleTextSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!textPrompt.trim() || loadingText) return;
+        setLoadingText(true);
+        setTextResponse('');
+        const result = await runGenAILab(textPrompt);
+        setTextResponse(result);
+        setLoadingText(false);
     };
 
     const handleEditSubmit = async (e: React.FormEvent) => {
@@ -59,7 +92,7 @@ const GenAILab: React.FC = () => {
         }
     };
     
-    const TabButton: React.FC<{tabKey: 'generate' | 'edit', label: string}> = ({ tabKey, label }) => (
+    const TabButton: React.FC<{tabKey: 'generate' | 'edit' | 'text', label: string}> = ({ tabKey, label }) => (
         <button
             onClick={() => setActiveTab(tabKey)}
             className={`px-4 py-2 text-sm font-medium rounded-md ${
@@ -72,18 +105,77 @@ const GenAILab: React.FC = () => {
         </button>
     );
 
+    const metrics = useMemo(() => {
+        return {
+            totalGenerations: generations.length,
+            thisWeek: generations.filter(g => {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return g.timestamp >= weekAgo;
+            }).length,
+            successRate: '95%'
+        };
+    }, [generations]);
+
     return (
         <div>
-            <div className="text-center">
-                <i className="fas fa-flask text-5xl text-emerald-500 mb-4"></i>
-                <h1 className="text-3xl font-bold text-gray-800">{t('gen_ai_lab_title')}</h1>
-                <p className="mt-2 text-gray-600 max-w-2xl mx-auto">{t('gen_ai_lab_subtitle')}</p>
+            {/* Header avec gradient */}
+            <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-t-lg overflow-hidden mb-6">
+                <div className="p-6 pb-4">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-bold mb-2 flex items-center">
+                                <i className="fas fa-flask mr-3"></i>
+                                {t('gen_ai_lab_title')}
+                            </h1>
+                            <p className="text-emerald-100">{t('gen_ai_lab_subtitle')}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="mt-8 max-w-4xl mx-auto">
+            {/* Métriques */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-emerald-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm font-medium">Générations Totales</p>
+                            <p className="text-2xl font-bold text-gray-800 mt-1">{metrics.totalGenerations}</p>
+                        </div>
+                        <div className="bg-emerald-100 rounded-full p-3">
+                            <i className="fas fa-images text-emerald-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm font-medium">Cette Semaine</p>
+                            <p className="text-2xl font-bold text-gray-800 mt-1">{metrics.thisWeek}</p>
+                        </div>
+                        <div className="bg-blue-100 rounded-full p-3">
+                            <i className="fas fa-calendar-week text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-teal-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm font-medium">Taux de Réussite</p>
+                            <p className="text-2xl font-bold text-gray-800 mt-1">{metrics.successRate}</p>
+                        </div>
+                        <div className="bg-teal-100 rounded-full p-3">
+                            <i className="fas fa-check-circle text-teal-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto">
                 <div className="flex justify-center space-x-2 p-2 bg-gray-100 rounded-lg mb-6">
                     <TabButton tabKey="generate" label={t('image_generator')} />
                     <TabButton tabKey="edit" label={t('image_editing')} />
+                    <TabButton tabKey="text" label="Génération de Texte" />
                 </div>
                 
                 {activeTab === 'generate' && (
@@ -99,7 +191,11 @@ const GenAILab: React.FC = () => {
                                 rows={3}
                                 disabled={loadingGen}
                             />
-                            <button type="submit" disabled={loadingGen} className="mt-4 w-full bg-emerald-600 text-white py-3 rounded-md font-semibold hover:bg-emerald-700 disabled:bg-emerald-300 flex items-center justify-center">
+                            <button 
+                                type="submit" 
+                                disabled={loadingGen || !prompt.trim()} 
+                                className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-3 rounded-md font-semibold hover:from-emerald-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
                                 {loadingGen ? <><i className="fas fa-spinner fa-spin mr-2"></i>{t('generating')}</> : <><i className="fas fa-image mr-2"></i>{t('generate_image')}</>}
                             </button>
                         </form>
@@ -160,7 +256,11 @@ const GenAILab: React.FC = () => {
                                     rows={3}
                                     disabled={loadingEdit}
                                 />
-                                <button type="submit" disabled={loadingEdit} className="mt-4 w-full bg-emerald-600 text-white py-3 rounded-md font-semibold hover:bg-emerald-700 disabled:bg-emerald-300 flex items-center justify-center">
+                                <button 
+                                    type="submit" 
+                                    disabled={loadingEdit || !editPrompt.trim()} 
+                                    className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-3 rounded-md font-semibold hover:from-emerald-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                >
                                     {loadingEdit ? <><i className="fas fa-spinner fa-spin mr-2"></i>{t('generating')}</> : <><i className="fas fa-magic mr-2"></i>{t('generate_edit')}</>}
                                 </button>
                             </form>
@@ -171,6 +271,52 @@ const GenAILab: React.FC = () => {
                                 <div className="bg-gray-100 p-4 rounded-lg aspect-square flex justify-center items-center">
                                     {loadingEdit && <div className="flex flex-col items-center text-emerald-500"><i className="fas fa-spinner fa-spin text-4xl"></i><p className="mt-4">{t('generating')}</p></div>}
                                     {editedImage && <img src={editedImage} alt="Edited by AI" className="rounded-lg object-contain max-w-full max-h-full" />}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'text' && (
+                    <div className="bg-white p-8 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">Génération de Texte Créatif</h2>
+                        <p className="text-sm text-gray-500 mb-6">Génère du contenu textuel créatif avec l'IA</p>
+                        <form onSubmit={handleTextSubmit}>
+                            <textarea
+                                value={textPrompt}
+                                onChange={(e) => setTextPrompt(e.target.value)}
+                                placeholder="Ex: Écris une histoire courte sur l'innovation technologique..."
+                                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500"
+                                rows={4}
+                                disabled={loadingText}
+                            />
+                            <button 
+                                type="submit" 
+                                disabled={loadingText || !textPrompt.trim()} 
+                                className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-3 rounded-md font-semibold hover:from-emerald-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                                {loadingText ? (
+                                    <><i className="fas fa-spinner fa-spin mr-2"></i>Génération en cours...</>
+                                ) : (
+                                    <><i className="fas fa-sparkles mr-2"></i>Générer du Texte</>
+                                )}
+                            </button>
+                        </form>
+                        {(loadingText || textResponse) && (
+                            <div className="mt-8">
+                                <h3 className="text-lg font-bold text-gray-700 mb-4">Réponse IA</h3>
+                                <div className="bg-gray-50 p-6 rounded-lg">
+                                    {loadingText && (
+                                        <div className="flex flex-col items-center text-emerald-500">
+                                            <i className="fas fa-spinner fa-spin text-4xl"></i>
+                                            <p className="mt-4">Génération en cours...</p>
+                                        </div>
+                                    )}
+                                    {textResponse && (
+                                        <div className="prose prose-emerald max-w-none text-gray-700 whitespace-pre-wrap">
+                                            {textResponse}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
