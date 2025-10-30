@@ -181,6 +181,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
           canApprove: perms.canApprove
         }));
         
+        console.log('🔄 Saving with profileId:', selectedUser.profileId, 'vs id:', selectedUser.id);
         await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
         console.log('✅ Permission sauvegardée automatiquement:', { moduleName, permission, value });
       } catch (error) {
