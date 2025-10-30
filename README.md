@@ -132,6 +132,10 @@ EcosystIA/
 
 - Authentification sécurisée via Supabase
 - Row Level Security (RLS) sur toutes les tables
+- Isolation multi‑organisation
+  - Rôles internes (SENEGEL): super_administrator, administrator, manager, supervisor, intern
+  - Rôles externes (incl. STUDENTS): student, entrepreneur, employer, trainer, coach, mentor, facilitator, implementer, funder, publisher, editor, producer, artist, alumni
+  - Les EXTERNES (incl. STUDENTS) n'ont pas accès au Management Panel et ne voient que leurs propres entités
 - Validation des données côté client et serveur
 - Gestion sécurisée des clés API
 
