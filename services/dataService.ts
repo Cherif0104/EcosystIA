@@ -142,6 +142,89 @@ export class DataService {
       
       console.log('✅ Utilisateur trouvé:', existingUser.email, existingUser.full_name);
       
+      // Supprimer les données liées à cet utilisateur AVANT de supprimer le profil
+      // pour éviter les violations de contrainte de clé étrangère
+      const profileId = existingUser.id;
+      console.log('🔄 Suppression des données liées pour profileId:', profileId);
+      
+      // Supprimer les factures
+      const { error: invoicesError } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('user_id', profileId);
+      if (invoicesError) {
+        console.error('❌ Erreur suppression factures:', invoicesError);
+      } else {
+        console.log('✅ Factures supprimées');
+      }
+      
+      // Supprimer les dépenses
+      const { error: expensesError } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('user_id', profileId);
+      if (expensesError) {
+        console.error('❌ Erreur suppression dépenses:', expensesError);
+      } else {
+        console.log('✅ Dépenses supprimées');
+      }
+      
+      // Supprimer les time logs
+      const { error: timeLogsError } = await supabase
+        .from('time_logs')
+        .delete()
+        .eq('user_id', profileId);
+      if (timeLogsError) {
+        console.error('❌ Erreur suppression time logs:', timeLogsError);
+      } else {
+        console.log('✅ Time logs supprimés');
+      }
+      
+      // Supprimer les demandes de congé
+      const { error: leaveRequestsError } = await supabase
+        .from('leave_requests')
+        .delete()
+        .eq('user_id', profileId);
+      if (leaveRequestsError) {
+        console.error('❌ Erreur suppression demandes de congé:', leaveRequestsError);
+      } else {
+        console.log('✅ Demandes de congé supprimées');
+      }
+      
+      // Supprimer les objectifs
+      const { error: objectivesError } = await supabase
+        .from('objectives')
+        .delete()
+        .eq('owner_id', profileId);
+      if (objectivesError) {
+        console.error('❌ Erreur suppression objectifs:', objectivesError);
+      } else {
+        console.log('✅ Objectifs supprimés');
+      }
+      
+      // Supprimer les notifications
+      const { error: notificationsError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', profileId);
+      if (notificationsError) {
+        console.error('❌ Erreur suppression notifications:', notificationsError);
+      } else {
+        console.log('✅ Notifications supprimées');
+      }
+      
+      // Supprimer les permissions modules
+      const { error: permissionsError } = await supabase
+        .from('user_module_permissions')
+        .delete()
+        .eq('user_id', profileId);
+      if (permissionsError) {
+        console.error('❌ Erreur suppression permissions:', permissionsError);
+      } else {
+        console.log('✅ Permissions supprimées');
+      }
+      
+      // Maintenant supprimer le profil
       const { error } = await supabase
         .from('profiles')
         .delete()
