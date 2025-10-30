@@ -289,6 +289,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
         try {
             await onUpdateUser(userToUpdate);
             console.log('✅ Profil modifié avec succès');
+            
+            // Message de succès (utiliser Toast si disponible)
+            if (typeof window !== 'undefined' && (window as any).Toast) {
+                (window as any).Toast.success('Profil modifié avec succès');
+            }
+            
             setProfileModalOpen(false);
             setProfileUser(null);
         } catch (error) {
