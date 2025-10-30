@@ -260,15 +260,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     
     const handleSaveRole = async (userId: number, newRole: Role) => {
         const userToUpdate = users.find(u => u.id === userId);
-        if(!userToUpdate) return;
+        if(!userToUpdate) {
+            console.error('❌ Utilisateur non trouvé pour modification rôle');
+            return;
+        }
         
+        console.log('🔄 Modification rôle:', { userId, oldRole: userToUpdate.role, newRole });
         setIsUpdatingRole(true);
         try {
             await onUpdateUser({...userToUpdate, role: newRole});
             console.log('✅ Rôle modifié avec succès');
             
+            // Message de succès
+            if (typeof window !== 'undefined' && (window as any).Toast) {
+                (window as any).Toast.success(`Rôle modifié avec succès en ${newRole}`);
+            }
+            
             // Déclencher le rechargement des permissions dans toute l'app
             window.dispatchEvent(new Event('permissions-reload'));
+            console.log('📢 Event permissions-reload déclenché');
             
             // Attendre un peu pour que la mise à jour soit visible
             setTimeout(() => {
