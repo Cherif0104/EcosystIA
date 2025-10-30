@@ -67,6 +67,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const selectedUser = users.find(u => u.id === selectedUserId);
 
@@ -213,29 +214,36 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     };
     setPermissions(updatedPermissions);
 
-    // Sauvegarde automatique dans Supabase
+    // Debounce: Annuler le timeout précédent si existant
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+
+    // Sauvegarde automatique dans Supabase avec debounce de 500ms
     if (selectedUser && selectedUser.profileId) {
-      setIsSaving(true);
-      try {
-        const payload = Object.entries(updatedPermissions).map(([modName, perms]) => ({
-          moduleName: modName,
-          canRead: perms.canRead,
-          canWrite: perms.canWrite,
-          canDelete: perms.canDelete,
-          canApprove: perms.canApprove
-        }));
-        
-        console.log('🔄 Saving with profileId:', selectedUser.profileId, 'vs id:', selectedUser.id);
-        await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
-        console.log('✅ Permission sauvegardée automatiquement:', { moduleName, permission, value });
-      } catch (error) {
-        console.error('❌ Erreur sauvegarde automatique:', error);
-        // Rollback local en cas d'erreur
-        setPermissions(permissions);
-        alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
-      } finally {
-        setIsSaving(false);
-      }
+      const timeout = setTimeout(async () => {
+        setIsSaving(true);
+        try {
+          const payload = Object.entries(updatedPermissions).map(([modName, perms]) => ({
+            moduleName: modName,
+            canRead: perms.canRead,
+            canWrite: perms.canWrite,
+            canDelete: perms.canDelete,
+            canApprove: perms.canApprove
+          }));
+          
+          await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde automatique:', error);
+          // Rollback local en cas d'erreur
+          setPermissions(permissions);
+          alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+        } finally {
+          setIsSaving(false);
+        }
+      }, 500);
+      
+      setSaveTimeout(timeout);
     }
   };
 
@@ -414,7 +422,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r-lg">
               <p className="text-sm text-gray-700 flex items-start gap-2">
                 <i className="fas fa-info-circle text-blue-600 mt-1"></i>
-                <span><strong>Hiérarchie des permissions :</strong> Les permissions supérieures nécessitent d'activer d'abord les permissions de base (Lecture → Écriture → Suppression/Approbation)</span>
+                <span><strong>Info :</strong> Les modifications sont sauvegardées automatiquement après 0.5s d'inactivité</span>
               </p>
             </div>
             <div className="space-y-6 max-h-[600px] overflow-y-auto">
@@ -531,21 +539,14 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
             </div>
           </div>
 
-          {/* Bouton de sauvegarde */}
+          {/* Bouton d'annulation */}
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setSelectedUserId('')}
-              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors shadow-sm"
-            >
-              <i className="fas fa-times mr-2"></i>
-              Annuler
-            </button>
-            <button
-              onClick={handleSave}
               className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-lg font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg transform hover:scale-105"
             >
-              <i className="fas fa-save mr-2"></i>
-              Sauvegarder les Permissions
+              <i className="fas fa-check mr-2"></i>
+              Fermer
             </button>
           </div>
         </>
