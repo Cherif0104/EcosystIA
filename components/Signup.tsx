@@ -41,9 +41,10 @@ const PasswordStrengthMeter: React.FC<{ password?: string }> = ({ password = '' 
 
 interface SignupProps {
   onSwitchToLogin: () => void;
+  onSignupSuccess?: () => void;
 }
 
-const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
+const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => {
   const { t } = useLocalization();
   const { signUp } = useAuth();
   const [name, setName] = useState('');
@@ -132,6 +133,11 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
         setError('Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous.');
       } else {
         setError(errorMessage);
+      }
+    } else {
+      // Inscription réussie
+      if (onSignupSuccess) {
+        onSignupSuccess();
       }
     }
     

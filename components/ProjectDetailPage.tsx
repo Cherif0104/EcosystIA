@@ -1817,12 +1817,12 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
             {/* Modals */}
             {isLogTimeModalOpen && currentUser && (
                 <LogTimeModal
-                    isOpen={isLogTimeModalOpen}
                     onClose={() => setLogTimeModalOpen(false)}
                     onSave={handleSaveTimeLog}
-                    entityType="project"
-                    entityId={currentProject.id}
-                    entityName={currentProject.title}
+                    projects={[]}
+                    courses={[]}
+                    user={currentUser}
+                    initialEntity={{ type: 'project', id: currentProject.id }}
                 />
             )}
 

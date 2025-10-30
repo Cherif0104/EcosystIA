@@ -407,12 +407,14 @@ const App: React.FC = () => {
 
   if (!user) {
     if (authView === 'signup') {
-        return <Signup onSwitchToLogin={() => setAuthView('login')} />;
+        return <Signup onSwitchToLogin={() => setAuthView('login')} onSignupSuccess={() => {
+          // TOUJOURS rediriger vers dashboard après inscription
+          handleSetView('dashboard');
+        }} />;
     }
     return <Login onSwitchToSignup={() => setAuthView('signup')} onLoginSuccess={() => {
-      // Récupérer la page précédente depuis localStorage ou utiliser dashboard par défaut
-      const lastView = localStorage.getItem('lastView') || 'dashboard';
-      handleSetView(lastView);
+      // TOUJOURS rediriger vers dashboard après connexion
+      handleSetView('dashboard');
     }} />;
   }
 
