@@ -178,8 +178,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     const [statusFilter, setStatusFilter] = useState<string>('all'); // all, active, inactive
     const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'super_admin'>('users');
     
-    // Rôles protégés contre la suppression
-    const PROTECTED_ROLES: Role[] = ['super_administrator', 'administrator', 'manager'];
+    // Rôles protégés contre la suppression (SEULEMENT super_administrator)
+    const PROTECTED_ROLES: Role[] = ['super_administrator'];
 
     // Realtime subscription pour les profils
     useEffect(() => {
@@ -324,9 +324,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     };
 
     const handleDelete = async (user: User) => {
-        // Vérifier si l'utilisateur a un rôle protégé
+        // Vérifier si l'utilisateur a un rôle protégé (SEULEMENT super_administrator)
         if (PROTECTED_ROLES.includes(user.role as Role)) {
-            alert(`Impossible de supprimer les rôles d'administration (${user.role}). Ces rôles sont protégés pour maintenir la sécurité de la plateforme.`);
+            alert(`Impossible de supprimer le rôle Super Administrateur (${user.role}). Ce rôle est protégé pour maintenir la sécurité de la plateforme.`);
             return;
         }
         
@@ -617,7 +617,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                                         onClick={() => handleDelete(user)} 
                                                         disabled={PROTECTED_ROLES.includes(user.role as Role)}
                                                         className={`font-medium text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors ${PROTECTED_ROLES.includes(user.role as Role) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                        title={PROTECTED_ROLES.includes(user.role as Role) ? 'Impossible de supprimer les rôles d\'administration' : ''}
+                                                        title={PROTECTED_ROLES.includes(user.role as Role) ? 'Impossible de supprimer le Super Administrateur' : ''}
                                                     >
                                                         <i className="fas fa-trash mr-2"></i>
                                                         Supprimer
