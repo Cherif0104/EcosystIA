@@ -5,6 +5,7 @@ import { mockProjects, mockGoals } from './constants/data';
 import { Course, Job, Project, Objective, Contact, Document, User, Role, TimeLog, LeaveRequest, Invoice, Expense, AppNotification, RecurringInvoice, RecurringExpense, RecurrenceFrequency, Budget, Meeting } from './types';
 import { useLocalization } from './contexts/LocalizationContext';
 import DataAdapter from './services/dataAdapter';
+import DataService from './services/dataService';
 
 import Login from './components/Login';
 import Signup from './components/Signup';
