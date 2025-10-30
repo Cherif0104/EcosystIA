@@ -13,12 +13,53 @@ const UserEditModal: React.FC<{
     user: User;
     onClose: () => void;
     onSave: (userId: number, newRole: Role) => void;
-}> = ({ user, onClose, onSave }) => {
+    isLoading?: boolean;
+    allUsers?: User[];
+    currentUserId?: string;
+}> = ({ user, onClose, onSave, isLoading = false, allUsers = [], currentUserId }) => {
     const { t } = useLocalization();
     const [selectedRole, setSelectedRole] = useState<Role>(user.role);
+    const PROTECTED_ROLES: Role[] = ['super_administrator', 'administrator', 'manager'];
+    
+    // Vérifier si l'utilisateur actuel est le dernier Super Admin
+    const isLastSuperAdmin = user.role === 'super_administrator' && 
+        allUsers.filter(u => u.role === 'super_administrator').length === 1;
+    
+    // Vérifier si on change un Super Admin vers un rôle non-protégé
+    const isChangingFromAdminToNonAdmin = PROTECTED_ROLES.includes(user.role) && !PROTECTED_ROLES.includes(selectedRole);
+    
+    // Vérifier si c'est l'utilisateur actuellement connecté qui change de rôle
+    const isChangingCurrentUser = currentUserId && String(user.id) === String(currentUserId);
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Protection : Ne pas permettre de retirer le dernier Super Admin
+        if (isLastSuperAdmin && selectedRole !== 'super_administrator') {
+            alert('Impossible de changer le rôle du dernier Super Administrateur. Il doit rester Super Admin pour maintenir la sécurité de la plateforme.');
+            return;
+        }
+        
+        // Protection : Avertir si on retire le rôle d'admin à un utilisateur
+        if (isChangingFromAdminToNonAdmin) {
+            const confirmed = window.confirm(
+                `Attention ! Vous êtes sur le point de retirer le rôle d'administration à "${user.name}". ` +
+                `Cette action supprimera son accès au Management Ecosysteia. ` +
+                `Êtes-vous sûr de vouloir continuer ?`
+            );
+            if (!confirmed) return;
+        }
+        
+        // Avertir si c'est l'utilisateur actuellement connecté qui change de rôle
+        if (isChangingCurrentUser) {
+            const confirmed = window.confirm(
+                `Attention ! Vous modifiez votre propre rôle. ` +
+                `Cette action pourrait affecter vos accès. ` +
+                `Voulez-vous continuer ?`
+            );
+            if (!confirmed) return;
+        }
+        
         onSave(user.id, selectedRole);
     }
     
@@ -27,7 +68,7 @@ const UserEditModal: React.FC<{
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 border-b">
-                        <h2 className="text-xl font-bold">{t('assign_role')} for {user.name}</h2>
+                        <h2 className="text-xl font-bold">{t('assign_role')} pour {user.name}</h2>
                     </div>
                     <div className="p-6">
                         <label htmlFor="role-select" className="block text-sm font-medium text-gray-700">{t('user_role')}</label>
@@ -35,7 +76,8 @@ const UserEditModal: React.FC<{
                             id="role-select"
                             value={selectedRole}
                             onChange={e => setSelectedRole(e.target.value as Role)}
-                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                            disabled={isLoading}
+                            className={`mt-1 block w-full p-2 border border-gray-300 rounded-md ${isLoading ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
                         >
                             <optgroup label={t('youth')}>
                                 <option value="student">{t('student')}</option>
@@ -67,10 +109,45 @@ const UserEditModal: React.FC<{
                                 <option value="super_administrator">{t('super_administrator')}</option>
                             </optgroup>
                         </select>
+                        
+                        {isLastSuperAdmin && (
+                            <p className="mt-2 text-sm text-yellow-600">
+                                <i className="fas fa-exclamation-triangle mr-1"></i>
+                                Cet utilisateur est le dernier Super Administrateur. Il doit rester Super Admin.
+                            </p>
+                        )}
+                        
+                        {isChangingFromAdminToNonAdmin && selectedRole !== user.role && (
+                            <p className="mt-2 text-sm text-orange-600">
+                                <i className="fas fa-exclamation-triangle mr-1"></i>
+                                Attention : Cet utilisateur perdra son accès au Management Ecosysteia.
+                            </p>
+                        )}
+                        
+                        {isChangingCurrentUser && selectedRole !== user.role && (
+                            <p className="mt-2 text-sm text-blue-600">
+                                <i className="fas fa-info-circle mr-1"></i>
+                                Vous modifiez votre propre rôle. Cela affectera vos accès.
+                            </p>
+                        )}
                     </div>
                     <div className="p-4 bg-gray-50 border-t flex justify-end space-x-2">
-                        <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">{t('cancel')}</button>
-                        <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700">{t('save')}</button>
+                        <button 
+                            type="button" 
+                            onClick={onClose} 
+                            disabled={isLoading}
+                            className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {t('cancel')}
+                        </button>
+                        <button 
+                            type="submit" 
+                            disabled={isLoading || (isLastSuperAdmin && selectedRole !== 'super_administrator')}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
+                        >
+                            {isLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
+                            {isLoading ? 'Enregistrement...' : t('save')}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -95,6 +172,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [deletingUserId, setDeletingUserId] = useState<string | number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdatingRole, setIsUpdatingRole] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all'); // all, active, inactive
@@ -180,21 +258,43 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
         setProfileModalOpen(true);
     };
     
-    const handleSaveRole = (userId: number, newRole: Role) => {
+    const handleSaveRole = async (userId: number, newRole: Role) => {
         const userToUpdate = users.find(u => u.id === userId);
-        if(userToUpdate) {
-            onUpdateUser({...userToUpdate, role: newRole});
+        if(!userToUpdate) return;
+        
+        setIsUpdatingRole(true);
+        try {
+            await onUpdateUser({...userToUpdate, role: newRole});
+            console.log('✅ Rôle modifié avec succès');
+            
+            // Déclencher le rechargement des permissions dans toute l'app
+            window.dispatchEvent(new Event('permissions-reload'));
+            
+            // Attendre un peu pour que la mise à jour soit visible
+            setTimeout(() => {
+                setIsUpdatingRole(false);
+                setModalOpen(false);
+                setSelectedUser(null);
+            }, 500);
+        } catch (error) {
+            console.error('❌ Erreur modification rôle:', error);
+            alert('Erreur lors de la modification du rôle');
+            setIsUpdatingRole(false);
         }
-        setModalOpen(false);
-        setSelectedUser(null);
     };
 
     const handleSaveProfile = async (updatedUser: Partial<User>) => {
         if (!profileUser) return;
         const userToUpdate = { ...profileUser, ...updatedUser };
-        onUpdateUser(userToUpdate);
-        setProfileModalOpen(false);
-        setProfileUser(null);
+        try {
+            await onUpdateUser(userToUpdate);
+            console.log('✅ Profil modifié avec succès');
+            setProfileModalOpen(false);
+            setProfileUser(null);
+        } catch (error) {
+            console.error('❌ Erreur modification profil:', error);
+            alert('Erreur lors de la modification du profil');
+        }
     };
 
     const handleToggleActive = async (user: User, newState: boolean) => {
@@ -530,6 +630,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                     user={selectedUser}
                     onClose={() => setModalOpen(false)}
                     onSave={handleSaveRole}
+                    isLoading={isUpdatingRole}
+                    allUsers={users}
+                    currentUserId={currentUser?.id}
                 />
             )}
 

@@ -736,11 +736,44 @@ const App: React.FC = () => {
   // USERS
   const handleUpdateUser = async (updatedUser: User) => {
     try {
-      // Si le rôle a changé, mettre à jour dans Supabase
       const currentUser = users.find(u => u.id === updatedUser.id);
+      
+      // Si le rôle a changé, mettre à jour dans Supabase
       if (currentUser && currentUser.role !== updatedUser.role) {
         console.log('🔄 Rôle modifié, mise à jour dans Supabase:', { userId: updatedUser.id, newRole: updatedUser.role });
         await DataService.updateUserRole(String(updatedUser.id), updatedUser.role);
+      }
+      
+      // Mettre à jour les autres champs du profil si modifiés
+      if (currentUser) {
+        const profileUpdates: any = {};
+        let hasProfileChanges = false;
+        
+        if (currentUser.name !== updatedUser.name) {
+          profileUpdates.full_name = updatedUser.name;
+          hasProfileChanges = true;
+        }
+        if (currentUser.email !== updatedUser.email) {
+          profileUpdates.email = updatedUser.email;
+          hasProfileChanges = true;
+        }
+        if (currentUser.phone !== updatedUser.phone) {
+          profileUpdates.phone_number = updatedUser.phone;
+          hasProfileChanges = true;
+        }
+        if (currentUser.location !== updatedUser.location) {
+          profileUpdates.location = updatedUser.location;
+          hasProfileChanges = true;
+        }
+        if (currentUser.avatar !== updatedUser.avatar) {
+          profileUpdates.avatar_url = updatedUser.avatar;
+          hasProfileChanges = true;
+        }
+        
+        if (hasProfileChanges) {
+          console.log('🔄 Profil modifié, mise à jour dans Supabase:', { userId: updatedUser.id, updates: profileUpdates });
+          await DataService.updateProfile(String(updatedUser.id), profileUpdates);
+        }
       }
       
       // Mise à jour locale
@@ -754,6 +787,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('❌ Erreur mise à jour utilisateur:', error);
       alert('Erreur lors de la mise à jour de l\'utilisateur');
+      throw error; // Propager l'erreur pour que le composant puisse la gérer
     }
   };
 

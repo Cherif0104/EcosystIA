@@ -298,9 +298,10 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onClose, onSave
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
               disabled={loading}
             >
+              {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
               {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
             </button>
           </div>
