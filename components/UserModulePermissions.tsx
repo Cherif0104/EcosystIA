@@ -147,18 +147,42 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
 
   return (
     <div className="space-y-6">
+      {/* Header avec gradient */}
+      <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white shadow-lg rounded-lg p-6">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-16 h-16 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+            <i className="fas fa-shield-alt text-3xl"></i>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Gestion des Permissions Module</h2>
+            <p className="text-emerald-50 text-sm">
+              Configurez les accès et permissions pour chaque utilisateur
+            </p>
+          </div>
+        </div>
+        <div className="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
+          <p className="text-sm flex items-start gap-2">
+            <i className="fas fa-info-circle mt-1"></i>
+            <span>Gérez les permissions granulaires par module : Lecture, Écriture, Suppression, Approbation</span>
+          </p>
+        </div>
+      </div>
+
       {/* Sélection de l'utilisateur */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Sélectionner un utilisateur</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <i className="fas fa-user-check text-emerald-600"></i>
+          Sélectionner un utilisateur
+        </h3>
         <select
           value={selectedUserId}
           onChange={(e) => handleUserSelect(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 font-medium"
         >
           <option value="">-- Choisir un utilisateur --</option>
           {users.map(user => (
             <option key={user.id} value={user.id}>
-              {user.name} ({user.email}) - {t(user.role)}
+              {user.name || user.email} ({user.email}) - {t(user.role)}
             </option>
           ))}
         </select>
@@ -188,11 +212,16 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
 
           {/* Permissions par module */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Permissions par Module</h3>
-            <p className="text-sm text-gray-600 mb-6">
-              <i className="fas fa-info-circle mr-2 text-emerald-600"></i>
-              Les permissions supérieures nécessitent d'activer d'abord les permissions de base (Lecture → Écriture → Suppression/Approbation)
-            </p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <i className="fas fa-list-check text-emerald-600"></i>
+              Permissions par Module
+            </h3>
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r-lg">
+              <p className="text-sm text-gray-700 flex items-start gap-2">
+                <i className="fas fa-info-circle text-blue-600 mt-1"></i>
+                <span><strong>Hiérarchie des permissions :</strong> Les permissions supérieures nécessitent d'activer d'abord les permissions de base (Lecture → Écriture → Suppression/Approbation)</span>
+              </p>
+            </div>
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {Object.entries(moduleDisplayNames).map(([moduleName, displayName]) => {
                 const module = moduleName as ModuleName;
@@ -262,13 +291,14 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setSelectedUserId('')}
-              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors shadow-sm"
             >
+              <i className="fas fa-times mr-2"></i>
               Annuler
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors shadow-md"
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-lg font-semibold hover:from-emerald-700 hover:to-blue-700 transition-all shadow-lg transform hover:scale-105"
             >
               <i className="fas fa-save mr-2"></i>
               Sauvegarder les Permissions
