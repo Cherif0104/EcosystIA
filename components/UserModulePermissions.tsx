@@ -110,6 +110,51 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     </div>
   );
 
+  // Fonction pour obtenir les permissions par défaut basées sur le rôle
+  const getDefaultPermissionsByRole = (role: string): Record<ModuleName, {canRead: boolean, canWrite: boolean, canDelete: boolean, canApprove: boolean}> => {
+    const basePermissions: Record<ModuleName, any> = {} as any;
+    
+    // Tous les modules ont accès de base (lecture)
+    Object.keys(moduleDisplayNames).forEach(moduleName => {
+      basePermissions[moduleName as ModuleName] = {
+        canRead: true,
+        canWrite: true,
+        canDelete: false,
+        canApprove: false
+      };
+    });
+
+    // Permissions spéciales pour les modules de gestion (uniquement pour les rôles internes)
+    const managementRoles: Role[] = ['supervisor', 'manager', 'administrator', 'super_administrator'];
+    if (managementRoles.includes(role as Role)) {
+      basePermissions['course_management'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions['job_management'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions['leave_management_admin'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions['user_management'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions['crm_sales'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions['analytics'] = { canRead: true, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['talent_analytics'] = { canRead: true, canWrite: false, canDelete: false, canApprove: false };
+    } else {
+      // Les utilisateurs externes n'ont pas accès aux modules de gestion
+      basePermissions['course_management'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['job_management'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['leave_management_admin'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['user_management'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['crm_sales'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['analytics'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions['talent_analytics'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+    }
+
+    // Super admin a tous les droits
+    if (role === 'super_administrator') {
+      Object.keys(basePermissions).forEach(module => {
+        basePermissions[module as ModuleName] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      });
+    }
+
+    return basePermissions;
+  };
+
   const handleUserSelect = async (userId: string | number) => {
     setSelectedUserId(userId);
     
@@ -117,34 +162,31 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     const selectedUser = users.find(u => u.id === userId);
     
     if (!selectedUser) {
-      const defaultPermissions: Record<ModuleName, any> = {} as any;
+      // Si l'utilisateur n'est pas trouvé, utiliser des permissions vides
+      const emptyPermissions: Record<ModuleName, any> = {} as any;
       Object.keys(moduleDisplayNames).forEach(moduleName => {
-        defaultPermissions[moduleName as ModuleName] = {
+        emptyPermissions[moduleName as ModuleName] = {
           canRead: false,
           canWrite: false,
           canDelete: false,
           canApprove: false
         };
       });
-      setPermissions(defaultPermissions);
+      setPermissions(emptyPermissions);
       return;
     }
     
-    const defaultPermissions: Record<ModuleName, any> = {} as any;
-    Object.keys(moduleDisplayNames).forEach(moduleName => {
-      defaultPermissions[moduleName as ModuleName] = {
-        canRead: false, canWrite: false, canDelete: false, canApprove: false
-      };
-    });
+    // 1. Charger les permissions par défaut basées sur le rôle
+    let effectivePermissions = getDefaultPermissionsByRole(selectedUser.role);
 
     try {
-      // Utiliser profileId au lieu de userId pour charger les permissions
+      // 2. Surcharger avec les permissions Supabase si elles existent
       if (selectedUser.profileId) {
         const { data } = await DataService.getUserModulePermissions(String(selectedUser.profileId));
         if (Array.isArray(data) && data.length > 0) {
           data.forEach((row: any) => {
             const m = row.module_name as ModuleName;
-            defaultPermissions[m] = {
+            effectivePermissions[m] = {
               canRead: !!row.can_read,
               canWrite: !!row.can_write,
               canDelete: !!row.can_delete,
@@ -153,9 +195,11 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
           });
         }
       }
-    } catch {}
+    } catch (error) {
+      console.error('Erreur chargement permissions Supabase:', error);
+    }
 
-    setPermissions(defaultPermissions);
+    setPermissions(effectivePermissions);
   };
 
   const handlePermissionChange = async (moduleName: ModuleName, permission: 'canRead' | 'canWrite' | 'canDelete' | 'canApprove', value: boolean) => {
