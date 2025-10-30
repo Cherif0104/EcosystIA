@@ -777,6 +777,19 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteUser = async (userId: string | number) => {
+    try {
+      console.log('🔄 Suppression utilisateur ID:', userId);
+      // Appel à Supabase pour supprimer l'utilisateur
+      // Note: Pour l'instant, suppression locale uniquement
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      console.log('✅ Utilisateur supprimé');
+    } catch (error) {
+      console.error('❌ Erreur suppression utilisateur:', error);
+      throw error;
+    }
+  };
+
   // JOBS
   const handleAddJob = async (newJob: Omit<Job, 'id' | 'applicants'>) => {
     setIsLoading(true);
@@ -1182,7 +1195,7 @@ const App: React.FC = () => {
                   onDeleteLeaveRequest={handleDeleteLeaveRequest}
                 />;
       case 'user_management':
-        return <UserManagement users={users} onUpdateUser={handleUpdateUser} onToggleActive={handleToggleActive} />;
+        return <UserManagement users={users} onUpdateUser={handleUpdateUser} onToggleActive={handleToggleActive} onDeleteUser={handleDeleteUser} />;
       case 'crm_sales':
         return <CRM 
                     contacts={contacts} 

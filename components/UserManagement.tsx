@@ -82,9 +82,10 @@ interface UserManagementProps {
     users: User[];
     onUpdateUser: (user: User) => void;
     onToggleActive?: (userId: string | number, isActive: boolean) => void;
+    onDeleteUser?: (userId: string | number) => Promise<void>;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, onToggleActive }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, onToggleActive, onDeleteUser }) => {
     const { t } = useLocalization();
     const { user: currentUser } = useAuth();
     const [isModalOpen, setModalOpen] = useState(false);
@@ -197,6 +198,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
         } else {
             // Fallback: mise à jour locale
             onUpdateUser({...user, isActive: newActiveState});
+        }
+    };
+
+    const handleDelete = async (user: User) => {
+        if (!window.confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name || user.email}" ? Cette action est irréversible.`)) {
+            return;
+        }
+        
+        if (onDeleteUser) {
+            try {
+                await onDeleteUser(user.id);
+                // Optionnel : afficher un message de succès
+                console.log('✅ Utilisateur supprimé avec succès');
+            } catch (error) {
+                console.error('❌ Erreur suppression utilisateur:', error);
+                alert('Erreur lors de la suppression de l\'utilisateur');
+            }
+        } else {
+            // Fallback: suppression locale uniquement (à éviter en production)
+            console.warn('⚠️ Suppression locale uniquement - onDeleteUser non fourni');
         }
     };
 
@@ -457,6 +478,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                                     >
                                                         <i className="fas fa-edit mr-2"></i>
                                                         Rôle
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDelete(user)} 
+                                                        className="font-medium text-red-600 hover:text-red-800 px-3 py-1 rounded hover:bg-red-50 transition-colors"
+                                                    >
+                                                        <i className="fas fa-trash mr-2"></i>
+                                                        Supprimer
                                                     </button>
                                     </td>
                                 </tr>
