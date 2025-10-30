@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { DataService } from '../services/dataService';
 import { ModuleName, ModulePermission } from '../types';
@@ -12,39 +12,47 @@ export const useModulePermissions = () => {
   const [permissions, setPermissions] = useState<ModulePermissions>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
+  const loadPermissions = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    try {
+      // Charger d'abord les permissions par défaut
+      let effective = getDefaultPermissions(user.role);
+      // Puis surcharger avec les permissions Supabase si existantes
+      // Utiliser profileId si disponible, sinon user.id (fallback pour compatibilité)
+      const userIdToUse = (user as any).profileId || user.id;
+      const { data, error } = await DataService.getUserModulePermissions(String(userIdToUse));
+      if (!error && Array.isArray(data) && data.length > 0) {
+        data.forEach((row: any) => {
+          const moduleName = row.module_name as ModuleName;
+          effective[moduleName] = {
+            canRead: !!row.can_read,
+            canWrite: !!row.can_write,
+            canDelete: !!row.can_delete,
+            canApprove: !!row.can_approve
+          } as ModulePermission;
+        });
       }
-      try {
-        // Charger d'abord les permissions par défaut
-        let effective = getDefaultPermissions(user.role);
-        // Puis surcharger avec les permissions Supabase si existantes
-        // Utiliser profileId si disponible, sinon user.id (fallback pour compatibilité)
-        const userIdToUse = (user as any).profileId || user.id;
-        const { data, error } = await DataService.getUserModulePermissions(String(userIdToUse));
-        if (!error && Array.isArray(data) && data.length > 0) {
-          data.forEach((row: any) => {
-            const moduleName = row.module_name as ModuleName;
-            effective[moduleName] = {
-              canRead: !!row.can_read,
-              canWrite: !!row.can_write,
-              canDelete: !!row.can_delete,
-              canApprove: !!row.can_approve
-            } as ModulePermission;
-          });
-        }
-        setPermissions(effective);
-      } catch (e) {
-        setPermissions(getDefaultPermissions(user.role));
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+      setPermissions(effective);
+    } catch (e) {
+      setPermissions(getDefaultPermissions(user.role));
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    loadPermissions();
+
+    // Écouter les événements de rechargement des permissions
+    window.addEventListener('permissions-reload', loadPermissions);
+
+    return () => {
+      window.removeEventListener('permissions-reload', loadPermissions);
+    };
+  }, [loadPermissions]);
 
   // Fonction pour vérifier si l'utilisateur a une permission spécifique
   const hasPermission = (module: ModuleName, action: 'read' | 'write' | 'delete' | 'approve'): boolean => {

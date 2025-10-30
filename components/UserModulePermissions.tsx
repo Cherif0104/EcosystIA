@@ -238,6 +238,9 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
           }));
           
           await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
+          
+          // Déclencher le rechargement des permissions dans toute l'app
+          window.dispatchEvent(new Event('permissions-reload'));
         } catch (error) {
           console.error('❌ Erreur sauvegarde automatique:', error);
           // Rollback local en cas d'erreur
@@ -264,6 +267,10 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
         canApprove: perms.canApprove
       }));
       await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
+      
+      // Déclencher le rechargement des permissions dans toute l'app
+      window.dispatchEvent(new Event('permissions-reload'));
+      
       alert('Permissions sauvegardées avec succès !');
     } catch (error) {
       console.error('❌ Erreur sauvegarde permissions:', error);
@@ -506,6 +513,9 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
                                     }));
                                     
                                     await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
+                                    
+                                    // Déclencher le rechargement des permissions dans toute l'app
+                                    window.dispatchEvent(new Event('permissions-reload'));
                                   } catch (error) {
                                     console.error('❌ Erreur sauvegarde automatique:', error);
                                     setPermissions(permissions);
