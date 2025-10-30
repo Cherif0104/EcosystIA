@@ -6,7 +6,7 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import NexusFlowIcon from './icons/NexusFlowIcon';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { useModulePermissions } from '../hooks/useModulePermissions';
-import { Role, ModuleName, INTERNAL_ROLES } from '../types';
+import { ModuleName, Role, MANAGEMENT_ROLES } from '../types';
 
 interface SidebarProps {
   currentView: string;
@@ -97,12 +97,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
   const { user } = useAuth();
   const { canAccessModule, loading: permissionsLoading } = useModulePermissions();
 
-  const managementRoles: Role[] = INTERNAL_ROLES;
-  const canManage = user && INTERNAL_ROLES.includes(user.role);
-  const canAdmin = user?.role === 'super_administrator';
-  
-  // Le super administrateur a accès à TOUS les modules sans restriction
-  const isSuperAdmin = user?.role === 'super_administrator';
+  // Tous les utilisateurs ont accès à tous les modules SAUF Management Ecosysteia
+  const hasManagementAccess = user && MANAGEMENT_ROLES.includes(user.role);
 
   const workspaceItems = [
     { icon: 'fas fa-th-large', label: t('dashboard'), view: 'dashboard' as ModuleName },
@@ -122,17 +118,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
   const toolsItems = [
     { icon: 'fas fa-robot', label: t('ai_coach'), view: 'ai_coach' as ModuleName },
     { icon: 'fas fa-flask', label: t('gen_ai_lab'), view: 'gen_ai_lab' as ModuleName },
-  ]
-  
-  // Pour le super admin, tous les modules sont accessibles
-  const adminNavItems = [
-    { icon: 'fas fa-users', label: t('crm_sales'), view: 'crm_sales', condition: isSuperAdmin || canManage },
-    { icon: 'fas fa-chalkboard-teacher', label: t('course_management'), view: 'course_management', condition: isSuperAdmin || canManage },
-    { icon: 'fas fa-chart-pie', label: t('analytics'), view: 'analytics', condition: isSuperAdmin },
-    { icon: 'fas fa-user-cog', label: t('user_management'), view: 'user_management', condition: isSuperAdmin },
-    { icon: 'fas fa-user-tie', label: t('talent_analytics'), view: 'talent_analytics', condition: isSuperAdmin },
   ];
-
+  
   const settingsItem = { icon: 'fas fa-cog', label: t('settings'), view: 'settings' as ModuleName };
   
   return (
@@ -171,22 +158,23 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
           </>
         )}
 
-        {!permissionsLoading && canManage && (
-             <>
-                {/* CRM & Sales - Module indépendant */}
-                {canAccessModule('crm_sales' as ModuleName) && (
-                  <NavLink 
-                    icon="fas fa-users" 
-                    label={t('crm_sales')} 
-                    viewName="crm_sales" 
-                    currentView={currentView} 
-                    setView={setView} 
-                  />
-                )}
+        {!permissionsLoading && (
+          <>
+            {/* CRM & Sales - Module indépendant */}
+            {canAccessModule('crm_sales' as ModuleName) && (
+              <NavLink 
+                icon="fas fa-users" 
+                label={t('crm_sales')} 
+                viewName="crm_sales" 
+                currentView={currentView} 
+                setView={setView} 
+              />
+            )}
 
+            {/* Menu expandable Management - SEULEMENT pour MANAGEMENT_ROLES */}
+            {hasManagementAccess && (
+              <>
                 <p className="px-4 pt-4 pb-2 text-xs uppercase text-gray-400">Management Panel</p>
-                
-                {/* Menu expandable Management */}
                 <ExpandableNavItem
                   icon="fas fa-tasks"
                   label="Management Ecosysteia"
@@ -199,15 +187,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
                     { icon: 'fas fa-user-cog', label: 'Gestion des Utilisateurs', viewName: 'user_management' },
                     { icon: 'fas fa-chart-pie', label: 'Analytics', viewName: 'analytics' },
                     { icon: 'fas fa-user-tie', label: 'Talent Analytics', viewName: 'talent_analytics' },
-                  ].filter(item => canAccessModule(item.viewName as ModuleName))}
+                  ]}
                 />
-            </>
-        )}
-        
-        {isSuperAdmin && (
-          <>
-            <p className="px-4 pt-4 pb-2 text-xs uppercase text-gray-400">Super Admin Panel</p>
-            <p className="px-4 text-xs text-gray-400 italic">Accès complet à tous les modules</p>
+              </>
+            )}
           </>
         )}
       </nav>

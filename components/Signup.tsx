@@ -65,11 +65,12 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
     const loadRoleAvailability = async () => {
       try {
         setLoadingRoles(true);
-        const restrictedRoles: Role[] = ['administrator', 'manager', 'supervisor'];
+        // Tous les rôles sont maintenant disponibles
+        const allRoles: Role[] = ['administrator', 'manager', 'supervisor', 'intern'];
         const availability: Record<string, { available: boolean; reason?: string }> = {};
 
-        // Vérifier chaque rôle restreint
-        for (const role of restrictedRoles) {
+        // Vérifier chaque rôle
+        for (const role of allRoles) {
           const check = await AuthService.checkRoleAvailability(role);
           availability[role] = check;
         }
@@ -154,20 +155,20 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden md:flex">
           {/* Left Panel */}
-          <div className="md:w-1/2 bg-emerald-600 text-white p-12 flex flex-col justify-center items-center text-center">
+          <div className="md:w-1/2 bg-gradient-to-br from-emerald-600 to-blue-600 text-white p-12 flex flex-col justify-center items-center text-center">
             <NexusFlowIcon className="w-28 h-28"/>
             <h1 className="text-3xl font-bold mt-4">SENEGEL</h1>
             <p className="mt-2 text-emerald-100 text-lg">Plateforme de Gestion et de Formation</p>
             <div className="mt-8 space-y-4 text-sm text-emerald-50">
-              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <i className="fas fa-users text-2xl mb-2"></i>
-                <h3 className="font-semibold mb-2">Équipe SENEGEL</h3>
-                <p className="text-xs">Accès aux projets collaboratifs et données organisationnelles</p>
+                <h3 className="font-semibold mb-2">Écosystème Unique</h3>
+                <p className="text-xs">Rejoignez une plateforme centralisée avec des rôles adaptés à vos besoins</p>
               </div>
-              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
-                <i className="fas fa-user-circle text-2xl mb-2"></i>
-                <h3 className="font-semibold mb-2">Comptes Indépendants</h3>
-                <p className="text-xs">Vos propres projets et modules, isolation totale</p>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <i className="fas fa-shield-alt text-2xl mb-2"></i>
+                <h3 className="font-semibold mb-2">Permissions Granulaires</h3>
+                <p className="text-xs">Votre accès est personnalisé selon votre rôle</p>
               </div>
             </div>
           </div>
@@ -176,18 +177,17 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
           <div className="md:w-1/2 p-8 md:p-12">
             <h2 className="text-3xl font-bold text-gray-900">{t('signup_title')}</h2>
             <form className="mt-8 space-y-6" onSubmit={handleSignup}>
-              {/* Bannière informative sur les types de comptes */}
-              <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-lg p-4 mb-4">
+              {/* Bannière informative */}
+              <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-lg p-4 mb-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
-                    <i className="fas fa-info-circle text-blue-600 text-xl mt-1"></i>
+                    <i className="fas fa-info-circle text-emerald-600 text-xl mt-1"></i>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Deux types de comptes disponibles</h3>
-                    <ul className="text-xs text-gray-700 space-y-1">
-                      <li>🏢 <strong>Compte SENEGEL :</strong> Accès à tous les projets et données de l'organisation</li>
-                      <li>👤 <strong>Compte Indépendant :</strong> Vos données isolées, vos propres projets</li>
-                    </ul>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Plateforme Unifiée SENEGEL</h3>
+                    <p className="text-xs text-gray-700">
+                      Choisissez votre rôle parmi nos 30+ rôles spécialisés. Votre accès sera personnalisé selon votre profil.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -259,69 +259,64 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
                   onChange={(e) => setRole(e.target.value as Role)}
                   className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
                 >
-                  <optgroup label="👥 Jeunesse">
+                  <optgroup label="👨‍🎓 Académique">
                     <option value="student">{t('student')}</option>
-                    <option value="entrepreneur">{t('entrepreneur')}</option>
+                    <option value="learner">{t('learner')}</option>
+                    <option value="alumni">{t('alumni')}</option>
                   </optgroup>
-                  <optgroup label="🤝 Partenaires">
-                    <option value="employer">{t('employer')}</option>
+                  <optgroup label="🏢 Gestion">
+                    <option value="intern">{t('intern')}</option>
+                    <option value="supervisor">{t('supervisor')}</option>
+                    <option value="manager">{t('manager')}</option>
+                    <option value="administrator">{t('administrator')}</option>
+                  </optgroup>
+                  <optgroup label="🎓 Formation">
                     <option value="trainer">{t('trainer')}</option>
+                    <option value="professor">{t('professor')}</option>
+                    <option value="facilitator">{t('facilitator')}</option>
+                    <option value="coach">{t('coach')}</option>
+                    <option value="mentor">{t('mentor')}</option>
+                  </optgroup>
+                  <optgroup label="💼 Professionnel">
+                    <option value="entrepreneur">{t('entrepreneur')}</option>
+                    <option value="employer">{t('employer')}</option>
                     <option value="funder">{t('funder')}</option>
                     <option value="implementer">{t('implementer')}</option>
                   </optgroup>
-                  <optgroup label="🎯 Contributeurs">
-                    <option value="mentor">{t('mentor')}</option>
-                    <option value="coach">{t('coach')}</option>
-                    <option value="facilitator">{t('facilitator')}</option>
-                    <option value="publisher">{t('publisher')}</option>
-                    <option value="editor">{t('editor')}</option>
-                    <option value="producer">{t('producer')}</option>
+                  <optgroup label="🎨 Créatif">
                     <option value="artist">{t('artist')}</option>
-                    <option value="alumni">{t('alumni')}</option>
+                    <option value="producer">{t('producer')}</option>
+                    <option value="editor">{t('editor')}</option>
+                    <option value="publisher">{t('publisher')}</option>
                   </optgroup>
-                  <optgroup label="🏢 Équipe SENEGEL">
-                    <option value="intern">{t('intern')} - SENEGEL</option>
-                    <option 
-                      value="supervisor" 
-                      disabled={!isRoleAvailable('supervisor')}
-                    >
-                      {t('supervisor')} - SENEGEL {!isRoleAvailable('supervisor') && '(Déjà créé)'}
-                    </option>
-                    <option 
-                      value="manager" 
-                      disabled={!isRoleAvailable('manager')}
-                    >
-                      {t('manager')} - SENEGEL {!isRoleAvailable('manager') && '(Déjà créé)'}
-                    </option>
-                    <option 
-                      value="administrator" 
-                      disabled={!isRoleAvailable('administrator')}
-                    >
-                      {t('administrator')} - SENEGEL {!isRoleAvailable('administrator') && '(Déjà créé)'}
-                    </option>
-                    {/* Le rôle super_administrator ne peut pas être créé via l'interface publique - réservé aux admins système */}
+                  <optgroup label="🤖 IA & Tech">
+                    <option value="ai_coach">{t('ai_coach')}</option>
+                    <option value="ai_developer">{t('ai_developer')}</option>
+                    <option value="ai_analyst">{t('ai_analyst')}</option>
+                  </optgroup>
+                  <optgroup label="🤝 Partenaires">
+                    <option value="partner">{t('partner')}</option>
+                    <option value="supplier">{t('supplier')}</option>
+                    <option value="service_provider">{t('service_provider')}</option>
                   </optgroup>
                 </select>
                 {role && ['intern', 'supervisor', 'manager', 'administrator'].includes(role) && (
                   <p className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
-                    🏢 <strong>Compte SENEGEL</strong><br/>
-                    Vous serez intégré à l'équipe interne SENEGEL et aurez accès à tous les projets et données de l'organisation.
+                    <i className="fas fa-shield-alt mr-2"></i>
+                    <strong>Accès Management Panel</strong><br/>
+                    Vous aurez accès aux modules de gestion et à toutes les données SENEGEL.
                   </p>
                 )}
-                {role && !['intern', 'supervisor', 'manager', 'administrator'].includes(role) && (
+                {role && !['intern', 'supervisor', 'manager', 'administrator', 'super_administrator'].includes(role) && (
                   <p className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800">
-                    👤 <strong>Compte Indépendant</strong><br/>
-                    Votre compte sera isolé avec vos propres données, projets et modules. Personne d'autre ne pourra voir vos contenus.
+                    <i className="fas fa-user-check mr-2"></i>
+                    <strong>Accès Standard</strong><br/>
+                    Votre accès sera personnalisé selon les permissions de votre rôle.
                   </p>
                 )}
                 {role && !isRoleAvailable(role) && (
                   <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 p-2 rounded">
                     ⚠️ {getRoleReason(role) || `Un compte avec le rôle "${role}" existe déjà. Ce rôle est limité à un seul compte.`}
-                  </p>
-                )}
-                {role && isRoleAvailable(role) && ['administrator', 'manager', 'supervisor'].includes(role) && (
-                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 p-2 rounded">
-                    ℹ️ Ce rôle est limité à un seul compte. Une fois créé, il ne sera plus disponible pour les autres utilisateurs.
                   </p>
                 )}
               </div>

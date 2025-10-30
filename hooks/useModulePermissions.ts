@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { DataService } from '../services/dataService';
-import { ModuleName, ModulePermission } from '../types';
+import { ModuleName, ModulePermission, Role, MANAGEMENT_ROLES } from '../types';
 
 interface ModulePermissions {
   [key: string]: ModulePermission;
@@ -63,9 +63,7 @@ export const useModulePermissions = () => {
   const hasPermission = (module: ModuleName, action: 'read' | 'write' | 'delete' | 'approve'): boolean => {
     if (!user) return false;
     
-    // Super admin a tous les droits
-    if (user.role === 'super_administrator') return true;
-    
+    // Tous les utilisateurs ont maintenant les mêmes droits par défaut
     const modulePermissions = permissions[module];
     if (!modulePermissions) return false;
     
@@ -98,39 +96,53 @@ export const useModulePermissions = () => {
 
 // Permissions par défaut basées sur le rôle
 const getDefaultPermissions = (role: string): ModulePermissions => {
-  const basePermissions: ModulePermissions = {
-    dashboard: { canRead: true, canWrite: false, canDelete: false, canApprove: false },
-    projects: { canRead: true, canWrite: true, canDelete: false, canApprove: false },
-    goals_okrs: { canRead: true, canWrite: true, canDelete: false, canApprove: false },
-    time_tracking: { canRead: true, canWrite: true, canDelete: false, canApprove: false },
-    leave_management: { canRead: true, canWrite: true, canDelete: false, canApprove: false },
-    finance: { canRead: true, canWrite: true, canDelete: false, canApprove: false },
-    knowledge_base: { canRead: true, canWrite: true, canDelete: false, canApprove: false },
-    courses: { canRead: true, canWrite: false, canDelete: false, canApprove: false },
-    jobs: { canRead: true, canWrite: false, canDelete: false, canApprove: false },
-    ai_coach: { canRead: true, canWrite: false, canDelete: false, canApprove: false },
-    gen_ai_lab: { canRead: true, canWrite: false, canDelete: false, canApprove: false },
-    settings: { canRead: true, canWrite: true, canDelete: false, canApprove: false }
-  };
-
-  // Permissions pour les modules de gestion (seulement pour les rôles de gestion)
-  const managementRoles = ['supervisor', 'manager', 'administrator', 'super_administrator'];
-  if (managementRoles.includes(role)) {
+  const basePermissions: ModulePermissions = {};
+  
+  // Vérifier si l'utilisateur a accès au Management Panel
+  const hasManagementAccess = MANAGEMENT_ROLES.includes(role as Role);
+  
+  // Dashboard (tous les utilisateurs y ont accès)
+  basePermissions.dashboard = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  
+  // Modules Workspace (tous les utilisateurs y ont accès)
+  basePermissions.projects = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.goals_okrs = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.time_tracking = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.leave_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.finance = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.knowledge_base = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  
+  // Modules Development (tous les utilisateurs y ont accès)
+  basePermissions.courses = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.jobs = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  
+  // Modules Tools (tous les utilisateurs y ont accès)
+  basePermissions.ai_coach = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  basePermissions.gen_ai_lab = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  
+  // CRM & Sales (tous les utilisateurs y ont accès)
+  basePermissions.crm_sales = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+  
+  // Management Panel (SEULEMENT pour les rôles de gestion)
+  if (hasManagementAccess) {
+    basePermissions.analytics = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.talent_analytics = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
     basePermissions.course_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
     basePermissions.job_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
     basePermissions.leave_management_admin = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
     basePermissions.user_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-    basePermissions.crm_sales = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-    basePermissions.analytics = { canRead: true, canWrite: false, canDelete: false, canApprove: false };
-    basePermissions.talent_analytics = { canRead: true, canWrite: false, canDelete: false, canApprove: false };
+  } else {
+    // Rôles non-management n'ont PAS accès aux modules Management Panel
+    basePermissions.analytics = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+    basePermissions.talent_analytics = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+    basePermissions.course_management = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+    basePermissions.job_management = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+    basePermissions.leave_management_admin = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+    basePermissions.user_management = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
   }
-
-  // Super admin a tous les droits
-  if (role === 'super_administrator') {
-    Object.keys(basePermissions).forEach(module => {
-      basePermissions[module] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-    });
-  }
+  
+  // Settings (tous les utilisateurs y ont accès)
+  basePermissions.settings = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
 
   return basePermissions;
 };

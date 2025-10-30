@@ -3,13 +3,14 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { useModulePermissions } from '../hooks/useModulePermissions';
 import { DataService } from '../services/dataService';
-import { User, ModuleName, Role } from '../types';
+import { User, ModuleName, Role, MANAGEMENT_ROLES } from '../types';
 
 interface UserModulePermissionsProps {
   users: User[];
 }
 
 const moduleDisplayNames: Record<ModuleName, string> = {
+  'dashboard': 'Dashboard',
   'projects': 'Projets',
   'goals_okrs': 'Objectifs OKR',
   'time_tracking': 'Suivi du Temps',
@@ -26,7 +27,8 @@ const moduleDisplayNames: Record<ModuleName, string> = {
   'user_management': 'Gestion des Utilisateurs',
   'course_management': 'Gestion des Cours',
   'job_management': 'Gestion des Jobs',
-  'leave_management_admin': 'Gestion des Demandes de Congés'
+  'leave_management_admin': 'Gestion des Demandes de Congés',
+  'settings': 'Paramètres'
 };
 
 // Catégories de modules pour une meilleure organisation
@@ -34,7 +36,7 @@ const moduleCategories: Record<string, { label: string; icon: string; modules: M
   workspace: {
     label: 'Workspace',
     icon: 'fas fa-briefcase',
-    modules: ['projects', 'goals_okrs', 'time_tracking', 'leave_management', 'finance', 'knowledge_base']
+    modules: ['dashboard', 'projects', 'goals_okrs', 'time_tracking', 'leave_management', 'finance', 'knowledge_base']
   },
   development: {
     label: 'Development',
@@ -55,6 +57,11 @@ const moduleCategories: Record<string, { label: string; icon: string; modules: M
     label: 'CRM & Sales',
     icon: 'fas fa-handshake',
     modules: ['crm_sales']
+  },
+  settings: {
+    label: 'Settings',
+    icon: 'fas fa-cog',
+    modules: ['settings']
   }
 };
 
@@ -115,42 +122,50 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
   const getDefaultPermissionsByRole = (role: string): Record<ModuleName, {canRead: boolean, canWrite: boolean, canDelete: boolean, canApprove: boolean}> => {
     const basePermissions: Record<ModuleName, any> = {} as any;
     
-    // Tous les modules ont accès de base (lecture)
-    Object.keys(moduleDisplayNames).forEach(moduleName => {
-      basePermissions[moduleName as ModuleName] = {
-        canRead: true,
-        canWrite: true,
-        canDelete: false,
-        canApprove: false
-      };
-    });
-
-    // Permissions spéciales pour les modules de gestion (uniquement pour les rôles internes)
-    const managementRoles: Role[] = ['supervisor', 'manager', 'administrator', 'super_administrator'];
-    if (managementRoles.includes(role as Role)) {
-      basePermissions['course_management'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-      basePermissions['job_management'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-      basePermissions['leave_management_admin'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-      basePermissions['user_management'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-      basePermissions['crm_sales'] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-      basePermissions['analytics'] = { canRead: true, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['talent_analytics'] = { canRead: true, canWrite: false, canDelete: false, canApprove: false };
+    // Vérifier si l'utilisateur a accès au Management Panel
+    const hasManagementAccess = MANAGEMENT_ROLES.includes(role as Role);
+    
+    // Dashboard (tous les utilisateurs)
+    basePermissions.dashboard = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    
+    // Définir l'accès aux modules Workspace (tous les utilisateurs)
+    basePermissions.projects = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.goals_okrs = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.time_tracking = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.leave_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.finance = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.knowledge_base = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    
+    // Modules Development (tous les utilisateurs)
+    basePermissions.courses = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.jobs = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    
+    // Modules Tools (tous les utilisateurs)
+    basePermissions.ai_coach = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    basePermissions.gen_ai_lab = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    
+    // CRM & Sales (tous les utilisateurs)
+    basePermissions.crm_sales = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    
+    // Settings (tous les utilisateurs)
+    basePermissions.settings = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+    
+    // Management Panel (SEULEMENT pour les rôles de gestion)
+    if (hasManagementAccess) {
+      basePermissions.analytics = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions.talent_analytics = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions.course_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions.job_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions.leave_management_admin = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
+      basePermissions.user_management = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
     } else {
-      // Les utilisateurs externes n'ont pas accès aux modules de gestion
-      basePermissions['course_management'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['job_management'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['leave_management_admin'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['user_management'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['crm_sales'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['analytics'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-      basePermissions['talent_analytics'] = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-    }
-
-    // Super admin a tous les droits
-    if (role === 'super_administrator') {
-      Object.keys(basePermissions).forEach(module => {
-        basePermissions[module as ModuleName] = { canRead: true, canWrite: true, canDelete: true, canApprove: true };
-      });
+      // Rôles non-management n'ont PAS accès aux modules Management Panel
+      basePermissions.analytics = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions.talent_analytics = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions.course_management = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions.job_management = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions.leave_management_admin = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+      basePermissions.user_management = { canRead: false, canWrite: false, canDelete: false, canApprove: false };
     }
 
     return basePermissions;

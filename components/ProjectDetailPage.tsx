@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
-import { Project, TimeLog, INTERNAL_ROLES } from '../types';
+import { Project, TimeLog, MANAGEMENT_ROLES } from '../types';
 import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';
 import DataAdapter from '../services/dataAdapter';
@@ -104,8 +104,8 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
 
     const totalLoggedHours = projectTimeLogs.reduce((sum, log) => sum + log.hours, 0);
 
-    // Vérifier si l'utilisateur appartient à SENEGEL (rôles internes)
-    const isSenegalTeam = currentUser?.role && INTERNAL_ROLES.includes(currentUser.role);
+    // Vérifier si l'utilisateur appartient à l'équipe de gestion
+    const isSenegalTeam = currentUser?.role && MANAGEMENT_ROLES.includes(currentUser.role);
 
     // Fonction pour calculer les métriques de charge de travail par rôle
     const getTeamWorkloadMetrics = () => {

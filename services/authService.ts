@@ -35,30 +35,7 @@ export class AuthService {
         };
       }
 
-      // Limiter les rôles management à un seul compte
-      const restrictedRoles = ['administrator', 'manager', 'supervisor'];
-      
-      if (restrictedRoles.includes(role)) {
-        const { data: existing, error } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('role', role)
-          .limit(1);
-
-        if (error) {
-          console.error('Erreur vérification rôle:', error);
-          return { available: true }; // En cas d'erreur, on autorise par sécurité
-        }
-
-        if (existing && existing.length > 0) {
-          return { 
-            available: false, 
-            error: `Un compte avec le rôle "${role}" existe déjà. Ce rôle est limité à un seul compte.` 
-          };
-        }
-      }
-
-      // Les autres rôles sont autorisés sans restriction
+      // Tous les autres rôles sont autorisés sans restriction (y compris administrator, manager, supervisor, intern)
       return { available: true };
     } catch (error) {
       console.error('Erreur vérification disponibilité rôle:', error);
@@ -95,16 +72,8 @@ export class AuthService {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Déterminer l'organization_id selon le rôle
-        const internalRoles = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
-        let organizationId: string | null = null;
-        
-        if (internalRoles.includes(data.role || 'student')) {
-          organizationId = '550e8400-e29b-41d4-a716-446655440000';  // SENEGEL
-        } else if (data.role === 'student') {
-          organizationId = '11111111-1111-1111-1111-111111111111';  // STUDENTS
-        }
-        // null pour les autres utilisateurs externes (isolation totale)
+        // Tous les utilisateurs rejoignent SENEGEL (architecture unifiée)
+        const organizationId = '550e8400-e29b-41d4-a716-446655440000';  // SENEGEL
         
         // Créer le profil utilisateur
         const { error: profileError } = await supabase

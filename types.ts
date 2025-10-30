@@ -1,28 +1,35 @@
 
 
-export type Role = 'student' | 'employer' | 'super_administrator' | 'administrator' | 'manager' | 'supervisor' | 'editor' | 'entrepreneur' | 'funder' | 'mentor' | 'intern' | 'trainer' | 'implementer' | 'coach' | 'facilitator' | 'publisher' | 'producer' | 'artist' | 'alumni';
+// Liste complète des rôles dans SENEGEL
+export type Role = 
+  // Rôles de gestion (accès Management Ecosysteia)
+  'super_administrator' | 'administrator' | 'manager' | 'supervisor' | 'intern' |
+  // Rôles pédagogiques et formation
+  'trainer' | 'professor' | 'facilitator' | 'coach' | 'mentor' |
+  // Rôles académiques
+  'student' | 'learner' | 'alumni' |
+  // Rôles professionnels
+  'entrepreneur' | 'employer' | 'implementer' | 'funder' |
+  // Rôles créatifs et médias
+  'artist' | 'producer' | 'editor' | 'publisher' |
+  // Rôles technologiques
+  'ai_coach' | 'ai_developer' | 'ai_analyst' |
+  // Rôles partenaires
+  'partner' | 'supplier' | 'service_provider';
 
-export type ModuleName = 'projects' | 'goals_okrs' | 'time_tracking' | 'leave_management' | 'finance' | 'knowledge_base' | 'courses' | 'jobs' | 'ai_coach' | 'gen_ai_lab' | 'crm_sales' | 'analytics' | 'talent_analytics' | 'user_management' | 'course_management' | 'job_management' | 'leave_management_admin';
+export type ModuleName = 'dashboard' | 'projects' | 'goals_okrs' | 'time_tracking' | 'leave_management' | 'finance' | 'knowledge_base' | 'courses' | 'jobs' | 'ai_coach' | 'gen_ai_lab' | 'crm_sales' | 'analytics' | 'talent_analytics' | 'user_management' | 'course_management' | 'job_management' | 'leave_management_admin' | 'settings';
 
-// Rôles internes SENEGEL (accès Management Panel)
-export const INTERNAL_ROLES: Role[] = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
+// Rôles ayant accès au Management Ecosysteia (seule restriction)
+export const MANAGEMENT_ROLES: Role[] = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
 
-// Rôles externes (inclut explicitement student)
-export const EXTERNAL_ROLES: Role[] = [
-  'student',
-  'employer',
-  'editor',
-  'entrepreneur',
-  'funder',
-  'mentor',
-  'trainer',
-  'implementer',
-  'coach',
-  'facilitator',
-  'publisher',
-  'producer',
-  'artist',
-  'alumni'
+// Tous les autres rôles n'ont pas accès au Management Ecosysteia
+export const NON_MANAGEMENT_ROLES: Role[] = [
+  'trainer', 'professor', 'facilitator', 'coach', 'mentor',
+  'student', 'learner', 'alumni',
+  'entrepreneur', 'employer', 'implementer', 'funder',
+  'artist', 'producer', 'editor', 'publisher',
+  'ai_coach', 'ai_developer', 'ai_analyst',
+  'partner', 'supplier', 'service_provider'
 ];
 
 export interface ModulePermission {

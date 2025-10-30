@@ -69,20 +69,20 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onLoginSuccess }) => {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden md:flex">
           {/* Left Panel */}
-          <div className="md:w-1/2 bg-emerald-600 text-white p-12 flex flex-col justify-center items-center text-center">
+          <div className="md:w-1/2 bg-gradient-to-br from-emerald-600 to-blue-600 text-white p-12 flex flex-col justify-center items-center text-center">
             <NexusFlowIcon className="w-28 h-28"/>
             <h1 className="text-3xl font-bold mt-4">SENEGEL</h1>
             <p className="mt-2 text-emerald-100 text-lg">Plateforme de Gestion et de Formation</p>
             <div className="mt-8 space-y-4 text-sm text-emerald-50">
-              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <i className="fas fa-users text-2xl mb-2"></i>
-                <h3 className="font-semibold mb-2">Équipe SENEGEL</h3>
-                <p className="text-xs">Accès aux projets collaboratifs et données organisationnelles</p>
+                <h3 className="font-semibold mb-2">Écosystème Unique</h3>
+                <p className="text-xs">Rejoignez une plateforme centralisée avec des rôles adaptés à vos besoins</p>
               </div>
-              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
-                <i className="fas fa-user-circle text-2xl mb-2"></i>
-                <h3 className="font-semibold mb-2">Comptes Indépendants</h3>
-                <p className="text-xs">Vos propres projets et modules, isolation totale</p>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                <i className="fas fa-shield-alt text-2xl mb-2"></i>
+                <h3 className="font-semibold mb-2">Permissions Granulaires</h3>
+                <p className="text-xs">Votre accès est personnalisé selon votre rôle</p>
               </div>
             </div>
           </div>
