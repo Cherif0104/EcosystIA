@@ -23,7 +23,7 @@
 
 - **37/37 tables** : Row Level Security actif
 - **3/3 buckets Storage** : Sécurisés avec RLS
-- **Isolation 3 niveaux** : SENEGEL (équipe interne), STUDENTS (isolation totale), EXTERNAL (isolation totale)
+- **Isolation 3 niveaux** : SENEGEL (équipe interne), **EXTERNES (incl. STUDENTS)**, EXTERNAL (isolation totale)
 
 #### ✅ Triggers métier non contournables
 

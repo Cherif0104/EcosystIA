@@ -42,14 +42,14 @@
 - **Rôles** : `super_administrator`, `administrator`, `manager`, `supervisor`, `intern`
 - **Accès** : Collaboration interne, Management Ecosysteia, Projets partagés
 
-#### 2️⃣ STUDENTS (Étudiants)
-- **UUID** : `11111111-1111-1111-1111-111111111111`
-- **Rôles** : `student`
-- **Accès** : UNIQUEMENT leurs propres projets (isolation totale)
+#### 2️⃣ EXTERNES (incl. STUDENTS)
+- **STUDENTS UUID** : `11111111-1111-1111-1111-111111111111`
+- **Rôles EXTERNES** : `student`, `entrepreneur`, `employer`, `trainer`, `coach`, `mentor`, `facilitator`, `implementer`, `funder`, `publisher`, `editor`, `producer`, `artist`, `alumni`
+- **Accès** : UNIQUEMENT leurs propres entités (isolation totale par organisation/utilisateur)
 
 #### 3️⃣ EXTERNAL (Comptes Indépendants)
 - **UUID** : `NULL` (isolation par userId)
-- **Rôles** : `entrepreneur`, `employer`, `trainer`, `coach`, `mentor`, `facilitator`, `implementer`, `funder`, `publisher`, `editor`, `producer`, `artist`, `alumni`
+- **Rôles** : mêmes rôles EXTERNES ci‑dessus (student est considéré EXTERNE au sens accès/panel)
 - **Accès** : UNIQUEMENT leurs propres projets (isolation totale)
 
 ### Matrice d'Accès par Rôle
@@ -68,7 +68,7 @@
 | AI Coach | ✅ | ✅ | ✅ | Accès universel |
 | Gen AI Lab | ✅ | ✅ | ✅ | Accès universel |
 | CRM & Sales | ✅ | ✅ | ✅ | Isolation par `created_by` |
-| Management Panel | ❌ | ❌ | ❌ | **UNIQUEMENT SENEGEL Internal** |
+| Management Panel | ❌ | ❌ | ❌ | **UNIQUEMENT SENEGEL Internal** (les EXTERNES, y compris `student`, n'y ont pas accès) |
 
 ---
 

@@ -139,16 +139,13 @@
 ### Isolation Organisation (3 niveaux)
 
 1. **SENEGEL** (UUID: 550e8400-e29b-41d4-a716-446655440000)
-   - Rôles : super_administrator, administrator, manager, supervisor, intern
+   - Rôles internes : super_administrator, administrator, manager, supervisor, intern
    - Accès : Collaboration interne, Management Ecosysteia
 
-2. **STUDENTS** (UUID: 11111111-1111-1111-1111-111111111111)
-   - Rôles : student
-   - Accès : Uniquement leurs propres projets
-
-3. **EXTERNAL** (UUID: NULL)
-   - Rôles : entrepreneur, employer, trainer, etc.
-   - Accès : Uniquement leurs propres projets
+2. **EXTERNES (incl. STUDENTS)**
+   - STUDENTS (UUID: 11111111-1111-1111-1111-111111111111) — sous‑ensemble des EXTERNES
+   - Rôles externes : student, entrepreneur, employer, trainer, coach, mentor, facilitator, implementer, funder, publisher, editor, producer, artist, alumni
+   - Accès : Espace propre, uniquement leurs entités (isolation org/user), **pas d'accès au Management Panel**
 
 ### Sécurité Multi-Niveaux
 

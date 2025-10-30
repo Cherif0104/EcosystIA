@@ -512,10 +512,10 @@ const canManage = user?.role === 'manager' || user?.role === 'administrator' || 
 
 ---
 
-### 🟢 STUDENTS Organization
+### 🟢 EXTERNES (incl. STUDENTS)
 
-**UUID** : `11111111-1111-1111-1111-111111111111`  
-**Rôles** : `student`
+**STUDENTS UUID** : `11111111-1111-1111-1111-111111111111`  
+**Rôles EXTERNES** : `student` et autres rôles externes
 
 #### Accès Super Admin
 
@@ -533,7 +533,7 @@ const canManage = user?.role === 'manager' || user?.role === 'administrator' || 
 
 #### Points d'Amélioration
 
-- ⚠️ **CRITIQUE** : Super Admin devrait avoir vue "Cross-Organization" pour supervision STUDENTS
+- ⚠️ **CRITIQUE** : Super Admin devrait avoir vue "Cross-Organization" pour supervision des EXTERNES (incl. STUDENTS)
 
 ---
 
