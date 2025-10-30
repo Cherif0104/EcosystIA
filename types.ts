@@ -4,6 +4,27 @@ export type Role = 'student' | 'employer' | 'super_administrator' | 'administrat
 
 export type ModuleName = 'projects' | 'goals_okrs' | 'time_tracking' | 'leave_management' | 'finance' | 'knowledge_base' | 'courses' | 'jobs' | 'ai_coach' | 'gen_ai_lab' | 'crm_sales' | 'analytics' | 'talent_analytics' | 'user_management' | 'course_management' | 'job_management' | 'leave_management_admin';
 
+// Rôles internes SENEGEL (accès Management Panel)
+export const INTERNAL_ROLES: Role[] = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
+
+// Rôles externes (inclut explicitement student)
+export const EXTERNAL_ROLES: Role[] = [
+  'student',
+  'employer',
+  'editor',
+  'entrepreneur',
+  'funder',
+  'mentor',
+  'trainer',
+  'implementer',
+  'coach',
+  'facilitator',
+  'publisher',
+  'producer',
+  'artist',
+  'alumni'
+];
+
 export interface ModulePermission {
   id?: string;
   userId: string;

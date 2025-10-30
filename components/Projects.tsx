@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
-import { Project, User, TimeLog } from '../types';
+import { Project, User, TimeLog, INTERNAL_ROLES } from '../types';
 import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';
 import TeamSelector from './common/TeamSelector';
@@ -1630,8 +1630,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
 
     // Vérifier si l'utilisateur appartient à SENEGEL (rôles internes)
     const isSenegalTeam = useMemo(() => {
-        const senegalRoles = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
-        return currentUser?.role && senegalRoles.includes(currentUser.role);
+        return currentUser?.role && INTERNAL_ROLES.includes(currentUser.role);
     }, [currentUser?.role]);
 
     // Calculer la charge de travail de l'équipe (version simplifiée pour MVP)

@@ -6,7 +6,7 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import NexusFlowIcon from './icons/NexusFlowIcon';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { useModulePermissions } from '../hooks/useModulePermissions';
-import { Role, ModuleName } from '../types';
+import { Role, ModuleName, INTERNAL_ROLES } from '../types';
 
 interface SidebarProps {
   currentView: string;
@@ -97,8 +97,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen }) => {
   const { user } = useAuth();
   const { canAccessModule, loading: permissionsLoading } = useModulePermissions();
 
-  const managementRoles: Role[] = ['supervisor', 'manager', 'administrator', 'super_administrator'];
-  const canManage = user && managementRoles.includes(user.role);
+  const managementRoles: Role[] = INTERNAL_ROLES;
+  const canManage = user && INTERNAL_ROLES.includes(user.role);
   const canAdmin = user?.role === 'super_administrator';
   
   // Le super administrateur a accès à TOUS les modules sans restriction
