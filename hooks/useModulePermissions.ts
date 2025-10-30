@@ -23,8 +23,10 @@ export const useModulePermissions = () => {
       // Puis surcharger avec les permissions Supabase si existantes
       // Utiliser profileId si disponible, sinon user.id (fallback pour compatibilité)
       const userIdToUse = (user as any).profileId || user.id;
+      console.log('🔄 useModulePermissions - Loading permissions for userId:', userIdToUse, 'profileId:', (user as any).profileId);
       const { data, error } = await DataService.getUserModulePermissions(String(userIdToUse));
       if (!error && Array.isArray(data) && data.length > 0) {
+        console.log('✅ useModulePermissions - Loaded', data.length, 'custom permissions from Supabase');
         data.forEach((row: any) => {
           const moduleName = row.module_name as ModuleName;
           effective[moduleName] = {
@@ -34,9 +36,12 @@ export const useModulePermissions = () => {
             canApprove: !!row.can_approve
           } as ModulePermission;
         });
+      } else {
+        console.log('ℹ️ useModulePermissions - No custom permissions, using role defaults');
       }
       setPermissions(effective);
     } catch (e) {
+      console.error('❌ useModulePermissions - Error loading permissions:', e);
       setPermissions(getDefaultPermissions(user.role));
     } finally {
       setLoading(false);
