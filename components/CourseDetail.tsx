@@ -210,10 +210,10 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                         onClick={onBack} 
                         className="flex items-center text-white hover:text-emerald-100 transition-colors mb-4"
                     >
-                        <i className="fas fa-arrow-left mr-2"></i>
-                        {t('back_to_courses')}
-                    </button>
-                    
+                    <i className="fas fa-arrow-left mr-2"></i>
+                    {t('back_to_courses')}
+                </button>
+                
                     <div className="flex items-center justify-between">
                         <div className="flex-1">
                             <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
@@ -350,15 +350,15 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                                     className="w-full border-2 border-emerald-600 text-emerald-600 py-3 rounded-lg font-semibold hover:bg-emerald-50 transition-all flex items-center justify-center"
                                 >
                                     <i className="fas fa-stopwatch mr-2"></i>
-                                    {t('log_time')}
-                                </button>
+                                {t('log_time')}
+                            </button>
                                 <button 
                                     onClick={handleStartLearning} 
                                     className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-lg font-semibold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg flex items-center justify-center"
                                 >
                                     <i className={`fas ${course.progress > 0 ? 'fa-play' : 'fa-play-circle'} mr-2`}></i>
-                                    {t(course.progress > 0 ? 'continue_learning' : 'start_learning')}
-                                </button>
+                                {t(course.progress > 0 ? 'continue_learning' : 'start_learning')}
+                            </button>
                             </div>
 
                             {/* Informations complémentaires */}
@@ -381,7 +381,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
             </div>
 
             {isLogTimeModalOpen && (
-                <LogTimeModal
+                 <LogTimeModal
                     onClose={() => setLogTimeModalOpen(false)}
                     onSave={handleSaveTimeLog}
                     projects={projects}

@@ -207,6 +207,13 @@ export class DataService {
       // Récupérer l'utilisateur actuel pour définir owner_id
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
+      // Récupérer l'organization_id de l'utilisateur
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', currentUser?.id || '')
+        .single();
+      
       return await ApiHelper.post('projects', {
         name: project.title || '',
         description: project.description || '',
@@ -218,6 +225,7 @@ export class DataService {
         client: project.clientName || null,
         team_members: teamMemberIds.length > 0 ? teamMemberIds : null,
         owner_id: currentUser?.id || null,
+        organization_id: profile?.organization_id || null,
         tasks: project.tasks || [],
         risks: project.risks || []
       });

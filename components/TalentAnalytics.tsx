@@ -118,8 +118,8 @@ const TalentAnalytics: React.FC<TalentAnalyticsProps> = ({ setView, users, jobs 
                                 onClick={() => setView('analytics')} 
                                 className="flex items-center text-white hover:text-emerald-100 transition-colors"
                             >
-                                <i className="fas fa-arrow-left mr-2"></i>
-                            </button>
+                <i className="fas fa-arrow-left mr-2"></i>
+            </button>
                             <div>
                                 <h1 className="text-4xl font-bold mb-2">👥 Talent Analytics</h1>
                                 <p className="text-emerald-50 text-sm">
@@ -243,7 +243,7 @@ const TalentAnalytics: React.FC<TalentAnalyticsProps> = ({ setView, users, jobs 
                             className="bg-emerald-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-emerald-700 transition-colors"
                         >
                             {t('forecast_needs')}
-                        </button>
+                         </button>
                     </div>
                 </div>
             </div>

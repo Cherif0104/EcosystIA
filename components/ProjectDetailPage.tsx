@@ -104,6 +104,10 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
 
     const totalLoggedHours = projectTimeLogs.reduce((sum, log) => sum + log.hours, 0);
 
+    // Vérifier si l'utilisateur appartient à SENEGEL (rôles internes)
+    const senegalRoles = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
+    const isSenegalTeam = currentUser?.role && senegalRoles.includes(currentUser.role);
+
     // Fonction pour calculer les métriques de charge de travail par rôle
     const getTeamWorkloadMetrics = () => {
         console.log('🔍 Debug - currentProject.team:', currentProject.team);
@@ -914,8 +918,8 @@ const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Charge de travail */}
-                                {getTeamWorkloadMetrics().length > 0 && (
+                                {/* Charge de travail - Visible uniquement pour SENEGEL */}
+                                {isSenegalTeam && getTeamWorkloadMetrics().length > 0 && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-3">Charge de travail</label>
                                         <div className="space-y-3">

@@ -95,6 +95,17 @@ export class AuthService {
       if (authError) throw authError;
 
       if (authData.user) {
+        // Déterminer l'organization_id selon le rôle
+        const internalRoles = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
+        let organizationId: string | null = null;
+        
+        if (internalRoles.includes(data.role || 'student')) {
+          organizationId = '550e8400-e29b-41d4-a716-446655440000';  // SENEGEL
+        } else if (data.role === 'student') {
+          organizationId = '11111111-1111-1111-1111-111111111111';  // STUDENTS
+        }
+        // null pour les autres utilisateurs externes (isolation totale)
+        
         // Créer le profil utilisateur
         const { error: profileError } = await supabase
           .from('profiles')
@@ -103,7 +114,8 @@ export class AuthService {
             email: data.email,
             full_name: data.full_name,
             phone_number: data.phone_number,
-            role: data.role || 'student'
+            role: data.role || 'student',
+            organization_id: organizationId
           });
 
         if (profileError) {

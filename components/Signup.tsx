@@ -150,14 +150,42 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
           {/* Left Panel */}
           <div className="md:w-1/2 bg-emerald-600 text-white p-12 flex flex-col justify-center items-center text-center">
             <NexusFlowIcon className="w-28 h-28"/>
-            <h1 className="text-3xl font-bold mt-4">{t('senegel_workflow_platform')}</h1>
-            <p className="mt-2 text-emerald-100">{t('signup_subtitle')}</p>
+            <h1 className="text-3xl font-bold mt-4">SENEGEL</h1>
+            <p className="mt-2 text-emerald-100 text-lg">Plateforme de Gestion et de Formation</p>
+            <div className="mt-8 space-y-4 text-sm text-emerald-50">
+              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
+                <i className="fas fa-users text-2xl mb-2"></i>
+                <h3 className="font-semibold mb-2">Équipe SENEGEL</h3>
+                <p className="text-xs">Accès aux projets collaboratifs et données organisationnelles</p>
+              </div>
+              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
+                <i className="fas fa-user-circle text-2xl mb-2"></i>
+                <h3 className="font-semibold mb-2">Comptes Indépendants</h3>
+                <p className="text-xs">Vos propres projets et modules, isolation totale</p>
+              </div>
+            </div>
           </div>
 
           {/* Right Panel */}
           <div className="md:w-1/2 p-8 md:p-12">
             <h2 className="text-3xl font-bold text-gray-900">{t('signup_title')}</h2>
             <form className="mt-8 space-y-6" onSubmit={handleSignup}>
+              {/* Bannière informative sur les types de comptes */}
+              <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <i className="fas fa-info-circle text-blue-600 text-xl mt-1"></i>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Deux types de comptes disponibles</h3>
+                    <ul className="text-xs text-gray-700 space-y-1">
+                      <li>🏢 <strong>Compte SENEGEL :</strong> Accès à tous les projets et données de l'organisation</li>
+                      <li>👤 <strong>Compte Indépendant :</strong> Vos données isolées, vos propres projets</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
                   {error}
@@ -225,17 +253,17 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
                   onChange={(e) => setRole(e.target.value as Role)}
                   className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
                 >
-                  <optgroup label={t('youth')}>
+                  <optgroup label="👥 Jeunesse">
                     <option value="student">{t('student')}</option>
                     <option value="entrepreneur">{t('entrepreneur')}</option>
                   </optgroup>
-                  <optgroup label={t('partner')}>
+                  <optgroup label="🤝 Partenaires">
                     <option value="employer">{t('employer')}</option>
                     <option value="trainer">{t('trainer')}</option>
                     <option value="funder">{t('funder')}</option>
                     <option value="implementer">{t('implementer')}</option>
                   </optgroup>
-                  <optgroup label={t('contributor_category')}>
+                  <optgroup label="🎯 Contributeurs">
                     <option value="mentor">{t('mentor')}</option>
                     <option value="coach">{t('coach')}</option>
                     <option value="facilitator">{t('facilitator')}</option>
@@ -245,36 +273,48 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin }) => {
                     <option value="artist">{t('artist')}</option>
                     <option value="alumni">{t('alumni')}</option>
                   </optgroup>
-                  <optgroup label={t('staff_category')}>
-                    <option value="intern">{t('intern')}</option>
+                  <optgroup label="🏢 Équipe SENEGEL">
+                    <option value="intern">{t('intern')} - SENEGEL</option>
                     <option 
                       value="supervisor" 
                       disabled={!isRoleAvailable('supervisor')}
                     >
-                      {t('supervisor')} {!isRoleAvailable('supervisor') && '(Déjà créé)'}
+                      {t('supervisor')} - SENEGEL {!isRoleAvailable('supervisor') && '(Déjà créé)'}
                     </option>
                     <option 
                       value="manager" 
                       disabled={!isRoleAvailable('manager')}
                     >
-                      {t('manager')} {!isRoleAvailable('manager') && '(Déjà créé)'}
+                      {t('manager')} - SENEGEL {!isRoleAvailable('manager') && '(Déjà créé)'}
                     </option>
                     <option 
                       value="administrator" 
                       disabled={!isRoleAvailable('administrator')}
                     >
-                      {t('administrator')} {!isRoleAvailable('administrator') && '(Déjà créé)'}
+                      {t('administrator')} - SENEGEL {!isRoleAvailable('administrator') && '(Déjà créé)'}
                     </option>
                     {/* Le rôle super_administrator ne peut pas être créé via l'interface publique - réservé aux admins système */}
                   </optgroup>
                 </select>
+                {role && ['intern', 'supervisor', 'manager', 'administrator'].includes(role) && (
+                  <p className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+                    🏢 <strong>Compte SENEGEL</strong><br/>
+                    Vous serez intégré à l'équipe interne SENEGEL et aurez accès à tous les projets et données de l'organisation.
+                  </p>
+                )}
+                {role && !['intern', 'supervisor', 'manager', 'administrator'].includes(role) && (
+                  <p className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800">
+                    👤 <strong>Compte Indépendant</strong><br/>
+                    Votre compte sera isolé avec vos propres données, projets et modules. Personne d'autre ne pourra voir vos contenus.
+                  </p>
+                )}
                 {role && !isRoleAvailable(role) && (
-                  <p className="mt-1 text-xs text-red-600">
+                  <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 p-2 rounded">
                     ⚠️ {getRoleReason(role) || `Un compte avec le rôle "${role}" existe déjà. Ce rôle est limité à un seul compte.`}
                   </p>
                 )}
                 {role && isRoleAvailable(role) && ['administrator', 'manager', 'supervisor'].includes(role) && (
-                  <p className="mt-1 text-xs text-amber-600">
+                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 p-2 rounded">
                     ℹ️ Ce rôle est limité à un seul compte. Une fois créé, il ne sera plus disponible pour les autres utilisateurs.
                   </p>
                 )}

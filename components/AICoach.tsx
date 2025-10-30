@@ -41,7 +41,7 @@ const AICoach: React.FC = () => {
 
   useEffect(() => {
     if (responseRef.current) {
-      responseRef.current.scrollIntoView({ behavior: 'smooth' });
+        responseRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [response, conversations]);
   
@@ -162,53 +162,53 @@ const AICoach: React.FC = () => {
               )}
 
               <form onSubmit={handleSubmit}>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder={t('ai_coach_prompt_placeholder')}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                  rows={4}
-                  disabled={loading}
-                />
-                <button
-                  type="submit"
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder={t('ai_coach_prompt_placeholder')}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+            rows={4}
+            disabled={loading}
+          />
+          <button
+            type="submit"
                   disabled={loading || !prompt.trim()}
                   className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-3 rounded-md font-semibold hover:from-emerald-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
-                >
-                  {loading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      {t('ai_coach_thinking')}
-                    </>
-                  ) : (
+          >
+            {loading ? (
+              <>
+                <i className="fas fa-spinner fa-spin mr-2"></i>
+                {t('ai_coach_thinking')}
+              </>
+            ) : (
                     <>
                       <i className="fas fa-paper-plane mr-2"></i>
                       {t('ai_coach_button')}
                     </>
-                  )}
-                </button>
-              </form>
-            </div>
+            )}
+          </button>
+        </form>
+      </div>
 
             {/* Réponse AI */}
-            {(loading || response) && (
+      {(loading || response) && (
               <div ref={responseRef} className="px-6 pb-6 border-t border-gray-200">
                 <h3 className="text-lg font-bold text-gray-700 my-4">{t('ai_coach_response_title')}</h3>
                 <div className="bg-gray-50 p-6 rounded-lg min-h-[100px]">
-                  {loading && (
+                {loading && (
                     <div className="flex justify-center items-center h-full">
                       <div className="text-center">
                         <i className="fas fa-spinner fa-spin text-3xl text-emerald-500 mb-2"></i>
                         <p className="text-gray-600">L'IA réfléchit...</p>
                       </div>
                     </div>
-                  )}
-                  {response && (
+                )}
+                {response && (
                     <div className="prose prose-emerald max-w-none text-gray-700">{formatResponse(response)}</div>
-                  )}
-                </div>
-              </div>
-            )}
+                )}
+            </div>
+        </div>
+      )}
           </div>
         </div>
 

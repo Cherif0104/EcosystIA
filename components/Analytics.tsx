@@ -72,8 +72,8 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
                     </div>
                 ))}
             </div>
-        </div>
-    );
+    </div>
+);
 };
 
 const Analytics: React.FC<AnalyticsProps> = ({ setView, users, projects, courses, jobs }) => {
@@ -146,7 +146,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ setView, users, projects, courses
             <div className="bg-gradient-to-r from-emerald-600 via-green-500 to-blue-600 text-white shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="flex items-center justify-between">
-                        <div>
+        <div>
                             <h1 className="text-4xl font-bold mb-2">📊 Analytics</h1>
                             <p className="text-emerald-50 text-sm">
                                 Analysez les performances de votre plateforme
@@ -200,26 +200,26 @@ const Analytics: React.FC<AnalyticsProps> = ({ setView, users, projects, courses
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <ChartCard title="Croissance des Utilisateurs">
                         <BarChart data={userGrowthData} />
-                    </ChartCard>
+                </ChartCard>
 
                     <ChartCard title="Inscriptions aux Cours">
                         <BarChart data={enrollmentData} />
-                    </ChartCard>
+                </ChartCard>
 
-                    <ChartCard 
+                <ChartCard 
                         title="Talent Analytics"
-                        viewMoreLink={() => setView('talent_analytics')}
+                    viewMoreLink={() => setView('talent_analytics')}
                         viewMoreText="Voir l'analyse des talents"
-                    >
-                        <div className="text-center py-8">
+                >
+                    <div className="text-center py-8">
                             <i className="fas fa-user-astronaut text-5xl text-emerald-500 mb-4"></i>
                             <p className="text-gray-600">{t('talent_analytics_subtitle')}</p>
-                        </div>
-                    </ChartCard>
+                    </div>
+                </ChartCard>
 
                     <ChartCard title="Postes par Secteur">
                         <PieChart data={jobsBySector} />
-                    </ChartCard>
+                </ChartCard>
                 </div>
 
                 {/* Section des tendances */}

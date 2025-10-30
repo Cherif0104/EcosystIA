@@ -71,8 +71,20 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onLoginSuccess }) => {
           {/* Left Panel */}
           <div className="md:w-1/2 bg-emerald-600 text-white p-12 flex flex-col justify-center items-center text-center">
             <NexusFlowIcon className="w-28 h-28"/>
-            <h1 className="text-3xl font-bold mt-4">{t('senegel_workflow_platform')}</h1>
-            <p className="mt-2 text-emerald-100">{t('login_subtitle')}</p>
+            <h1 className="text-3xl font-bold mt-4">SENEGEL</h1>
+            <p className="mt-2 text-emerald-100 text-lg">Plateforme de Gestion et de Formation</p>
+            <div className="mt-8 space-y-4 text-sm text-emerald-50">
+              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
+                <i className="fas fa-users text-2xl mb-2"></i>
+                <h3 className="font-semibold mb-2">Équipe SENEGEL</h3>
+                <p className="text-xs">Accès aux projets collaboratifs et données organisationnelles</p>
+              </div>
+              <div className="bg-emerald-700/30 backdrop-blur-sm rounded-lg p-4 border border-emerald-400/30">
+                <i className="fas fa-user-circle text-2xl mb-2"></i>
+                <h3 className="font-semibold mb-2">Comptes Indépendants</h3>
+                <p className="text-xs">Vos propres projets et modules, isolation totale</p>
+              </div>
+            </div>
           </div>
 
           {/* Right Panel */}

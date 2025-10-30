@@ -1623,10 +1623,15 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
         return filtered;
     }, [projects, searchQuery, statusFilter, sortBy, sortOrder]);
 
+    // Tous les utilisateurs peuvent créer des projets (isolation gérée par RLS)
     const canManage = useMemo(() => {
-        return currentUser?.role === 'manager' || 
-               currentUser?.role === 'administrator' || 
-               currentUser?.role === 'super_administrator';
+        return true;  // Isolation des données gérée par Row-Level Security
+    }, []);
+
+    // Vérifier si l'utilisateur appartient à SENEGEL (rôles internes)
+    const isSenegalTeam = useMemo(() => {
+        const senegalRoles = ['super_administrator', 'administrator', 'manager', 'supervisor', 'intern'];
+        return currentUser?.role && senegalRoles.includes(currentUser.role);
     }, [currentUser?.role]);
 
     // Calculer la charge de travail de l'équipe (version simplifiée pour MVP)
@@ -1763,8 +1768,8 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                     </div>
                 )}
 
-                {/* Section Team Workload Metrics - Style Power BI */}
-                {projects.length > 0 && (
+                {/* Section Team Workload Metrics - Style Power BI - Visible uniquement pour SENEGEL */}
+                {projects.length > 0 && isSenegalTeam && (
                     <div className="mb-8">
                         <TeamWorkloadMetrics projects={projects} users={users} />
                     </div>
