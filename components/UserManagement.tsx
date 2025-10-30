@@ -214,9 +214,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
             await onDeleteUser(deletingUserId);
             console.log('✅ Utilisateur supprimé avec succès');
             setDeletingUserId(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Erreur suppression utilisateur:', error);
-            alert('Erreur lors de la suppression de l\'utilisateur');
+            const errorMessage = error?.message || 'Erreur inconnue lors de la suppression';
+            alert(`Erreur lors de la suppression de l'utilisateur : ${errorMessage}`);
         }
     };
 

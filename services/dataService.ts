@@ -127,14 +127,16 @@ export class DataService {
         .eq('user_id', userIdStr)
         .maybeSingle();
       
-      if (checkError) {
-        console.error('❌ Erreur lors de la recherche de l\'utilisateur:', checkError);
-        throw checkError;
+      // Gérer les cas où l'utilisateur n'existe pas (pas une erreur critique)
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 = "no rows returned" - ce n'est pas une vraie erreur
+        console.error('❌ Erreur lors de la vérification de l\'utilisateur:', checkError);
+        throw new Error(`Erreur lors de la vérification: ${checkError.message}`);
       }
       
       if (!existingUser) {
-        console.warn('⚠️ Utilisateur non trouvé dans profiles:', userIdStr, '- Peut-être déjà supprimé');
-        // Retourner success: true car l'objectif (suppression) est atteint
+        console.warn('⚠️ Utilisateur non trouvé dans profiles:', userIdStr);
+        // Retourner succès même si l'utilisateur n'existe pas (déjà supprimé ou n'existe jamais)
         return { success: true, error: null };
       }
       
