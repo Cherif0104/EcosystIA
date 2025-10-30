@@ -37,6 +37,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
   const [permissions, setPermissions] = useState<Record<ModuleName, {canRead: boolean, canWrite: boolean, canDelete: boolean, canApprove: boolean}>>({} as any);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
+  const [isSaving, setIsSaving] = useState(false);
 
   const selectedUser = users.find(u => u.id === selectedUserId);
 
@@ -125,14 +126,40 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     setPermissions(defaultPermissions);
   };
 
-  const handlePermissionChange = (moduleName: ModuleName, permission: 'canRead' | 'canWrite' | 'canDelete' | 'canApprove', value: boolean) => {
-    setPermissions(prev => ({
-      ...prev,
+  const handlePermissionChange = async (moduleName: ModuleName, permission: 'canRead' | 'canWrite' | 'canDelete' | 'canApprove', value: boolean) => {
+    // Mise à jour locale immédiate
+    const updatedPermissions = {
+      ...permissions,
       [moduleName]: {
-        ...prev[moduleName],
+        ...permissions[moduleName],
         [permission]: value
       }
-    }));
+    };
+    setPermissions(updatedPermissions);
+
+    // Sauvegarde automatique dans Supabase
+    if (selectedUser) {
+      setIsSaving(true);
+      try {
+        const payload = Object.entries(updatedPermissions).map(([modName, perms]) => ({
+          moduleName: modName,
+          canRead: perms.canRead,
+          canWrite: perms.canWrite,
+          canDelete: perms.canDelete,
+          canApprove: perms.canApprove
+        }));
+        
+        await DataService.upsertUserModulePermissions(String(selectedUser.id), payload);
+        console.log('✅ Permission sauvegardée automatiquement:', { moduleName, permission, value });
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde automatique:', error);
+        // Rollback local en cas d'erreur
+        setPermissions(permissions);
+        alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -275,21 +302,29 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
         <>
           {/* En-tête avec informations utilisateur */}
           <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg shadow-sm border border-emerald-200 p-6">
-            <div className="flex items-center gap-4">
-              {selectedUser.avatar ? (
-                <img src={selectedUser.avatar || undefined} alt={selectedUser.name} className="w-16 h-16 rounded-full border-4 border-white shadow-md" onError={(e) => { e.currentTarget.style.display = 'none'; }}/>
-              ) : (
-                <div className="w-16 h-16 rounded-full border-4 border-white shadow-md bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
-                  {selectedUser.name?.charAt(0).toUpperCase() || 'U'}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {selectedUser.avatar ? (
+                  <img src={selectedUser.avatar || undefined} alt={selectedUser.name} className="w-16 h-16 rounded-full border-4 border-white shadow-md" onError={(e) => { e.currentTarget.style.display = 'none'; }}/>
+                ) : (
+                  <div className="w-16 h-16 rounded-full border-4 border-white shadow-md bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
+                    {selectedUser.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">{selectedUser.name || selectedUser.fullName}</h3>
+                  <p className="text-gray-600">{selectedUser.email}</p>
+                  <span className="inline-block mt-2 px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                    {t(selectedUser.role)}
+                  </span>
+                </div>
+              </div>
+              {isSaving && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm">
+                  <i className="fas fa-spinner fa-spin text-emerald-600"></i>
+                  <span className="text-sm font-medium text-gray-700">Sauvegarde...</span>
                 </div>
               )}
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">{selectedUser.name || selectedUser.fullName}</h3>
-                <p className="text-gray-600">{selectedUser.email}</p>
-                <span className="inline-block mt-2 px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                  {t(selectedUser.role)}
-                </span>
-              </div>
             </div>
           </div>
 
