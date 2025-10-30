@@ -179,12 +179,14 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     
     // 1. Charger les permissions par défaut basées sur le rôle
     let effectivePermissions = getDefaultPermissionsByRole(selectedUser.role);
+    console.log('📋 Permissions par défaut pour rôle', selectedUser.role, ':', effectivePermissions);
 
     try {
       // 2. Surcharger avec les permissions Supabase si elles existent
       if (selectedUser.profileId) {
         const { data } = await DataService.getUserModulePermissions(String(selectedUser.profileId));
         if (Array.isArray(data) && data.length > 0) {
+          console.log('📋 Permissions Supabase trouvées:', data.length, 'modules');
           data.forEach((row: any) => {
             const m = row.module_name as ModuleName;
             effectivePermissions[m] = {
@@ -194,12 +196,15 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
               canApprove: !!row.can_approve
             };
           });
+        } else {
+          console.log('📋 Aucune permission personnalisée dans Supabase, utilisation des défauts du rôle');
         }
       }
     } catch (error) {
       console.error('Erreur chargement permissions Supabase:', error);
     }
 
+    console.log('📋 Permissions finales chargées:', effectivePermissions);
     setPermissions(effectivePermissions);
   };
 
