@@ -1639,11 +1639,14 @@ export class DataAdapter {
         
         // Convertir les profils Supabase en User
         return (data || []).map((profile: any) => ({
-          id: profile.user_id || profile.id,
-          email: profile.email,
+          id: profile.user_id || profile.id, // UUID Supabase Auth (celui utilisé partout dans l'app)
+          profileId: profile.id, // UUID du profil Supabase (profiles.id) - utilisé pour les FK dans la DB
+          name: profile.full_name,
           fullName: profile.full_name,
+          email: profile.email,
           role: profile.role as any,
           avatar: profile.avatar_url || '',
+          phone: profile.phone_number || '',
           phoneNumber: profile.phone_number || '',
           skills: profile.skills || [],
           bio: profile.bio || '',

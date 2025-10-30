@@ -138,17 +138,20 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     });
 
     try {
-      const { data } = await DataService.getUserModulePermissions(String(userId));
-      if (Array.isArray(data) && data.length > 0) {
-        data.forEach((row: any) => {
-          const m = row.module_name as ModuleName;
-          defaultPermissions[m] = {
-            canRead: !!row.can_read,
-            canWrite: !!row.can_write,
-            canDelete: !!row.can_delete,
-            canApprove: !!row.can_approve
-          };
-        });
+      // Utiliser profileId au lieu de userId pour charger les permissions
+      if (selectedUser.profileId) {
+        const { data } = await DataService.getUserModulePermissions(String(selectedUser.profileId));
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row: any) => {
+            const m = row.module_name as ModuleName;
+            defaultPermissions[m] = {
+              canRead: !!row.can_read,
+              canWrite: !!row.can_write,
+              canDelete: !!row.can_delete,
+              canApprove: !!row.can_approve
+            };
+          });
+        }
       }
     } catch {}
 
@@ -167,7 +170,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
     setPermissions(updatedPermissions);
 
     // Sauvegarde automatique dans Supabase
-    if (selectedUser) {
+    if (selectedUser && selectedUser.profileId) {
       setIsSaving(true);
       try {
         const payload = Object.entries(updatedPermissions).map(([modName, perms]) => ({
@@ -178,7 +181,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
           canApprove: perms.canApprove
         }));
         
-        await DataService.upsertUserModulePermissions(String(selectedUser.id), payload);
+        await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
         console.log('✅ Permission sauvegardée automatiquement:', { moduleName, permission, value });
       } catch (error) {
         console.error('❌ Erreur sauvegarde automatique:', error);
@@ -192,7 +195,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
   };
 
   const handleSave = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser || !selectedUser.profileId) return;
     
     try {
       const payload = Object.entries(permissions).map(([moduleName, perms]) => ({
@@ -202,7 +205,7 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
         canDelete: perms.canDelete,
         canApprove: perms.canApprove
       }));
-      await DataService.upsertUserModulePermissions(String(selectedUser.id), payload);
+      await DataService.upsertUserModulePermissions(String(selectedUser.profileId), payload);
       alert('Permissions sauvegardées avec succès !');
     } catch (error) {
       console.error('❌ Erreur sauvegarde permissions:', error);
