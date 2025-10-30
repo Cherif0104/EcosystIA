@@ -22,7 +22,9 @@ export const useModulePermissions = () => {
         // Charger d'abord les permissions par défaut
         let effective = getDefaultPermissions(user.role);
         // Puis surcharger avec les permissions Supabase si existantes
-        const { data, error } = await DataService.getUserModulePermissions(String(user.id));
+        // Utiliser profileId si disponible, sinon user.id (fallback pour compatibilité)
+        const userIdToUse = (user as any).profileId || user.id;
+        const { data, error } = await DataService.getUserModulePermissions(String(userIdToUse));
         if (!error && Array.isArray(data) && data.length > 0) {
           data.forEach((row: any) => {
             const moduleName = row.module_name as ModuleName;
