@@ -29,6 +29,35 @@ const moduleDisplayNames: Record<ModuleName, string> = {
   'leave_management_admin': 'Gestion des Demandes de Congés'
 };
 
+// Catégories de modules pour une meilleure organisation
+const moduleCategories: Record<string, { label: string; icon: string; modules: ModuleName[] }> = {
+  workspace: {
+    label: 'Workspace',
+    icon: 'fas fa-briefcase',
+    modules: ['projects', 'goals_okrs', 'time_tracking', 'leave_management', 'finance', 'knowledge_base']
+  },
+  development: {
+    label: 'Development',
+    icon: 'fas fa-code',
+    modules: ['courses', 'jobs']
+  },
+  tools: {
+    label: 'Tools',
+    icon: 'fas fa-tools',
+    modules: ['ai_coach', 'gen_ai_lab']
+  },
+  management: {
+    label: 'Management Panel',
+    icon: 'fas fa-crown',
+    modules: ['course_management', 'job_management', 'leave_management_admin', 'user_management', 'analytics', 'talent_analytics']
+  },
+  sales: {
+    label: 'CRM & Sales',
+    icon: 'fas fa-handshake',
+    modules: ['crm_sales']
+  }
+};
+
 const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) => {
   const { t } = useLocalization();
   const { user: currentUser } = useAuth();
@@ -340,17 +369,29 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
                 <span><strong>Hiérarchie des permissions :</strong> Les permissions supérieures nécessitent d'activer d'abord les permissions de base (Lecture → Écriture → Suppression/Approbation)</span>
               </p>
             </div>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {Object.entries(moduleDisplayNames).map(([moduleName, displayName]) => {
-                const module = moduleName as ModuleName;
-                const modulePerms = permissions[module] || { canRead: false, canWrite: false, canDelete: false, canApprove: false };
-                
-                return (
-                  <div key={moduleName} className={`border rounded-lg p-5 transition-all ${
-                    modulePerms.canRead 
-                      ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300' 
-                      : 'border-gray-200 bg-gray-50'
-                  }`}>
+            <div className="space-y-6 max-h-[600px] overflow-y-auto">
+              {Object.entries(moduleCategories).map(([categoryKey, category]) => (
+                <div key={categoryKey} className="space-y-3">
+                  {/* Titre de catégorie */}
+                  <div className="sticky top-0 bg-gray-100 z-10 py-2 px-4 rounded-lg border border-gray-300">
+                    <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                      <i className={category.icon}></i>
+                      {category.label}
+                    </h4>
+                  </div>
+                  
+                  {/* Modules de la catégorie */}
+                  {category.modules.map(moduleName => {
+                    const module = moduleName as ModuleName;
+                    const displayName = moduleDisplayNames[module];
+                    const modulePerms = permissions[module] || { canRead: false, canWrite: false, canDelete: false, canApprove: false };
+                    
+                    return (
+                      <div key={moduleName} className={`border rounded-lg p-5 transition-all ${
+                        modulePerms.canRead 
+                          ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300' 
+                          : 'border-gray-200 bg-gray-50'
+                      }`}>
                     {/* En-tête du module avec toggle principal */}
                     <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
                       <div className="flex-1">
@@ -434,9 +475,11 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
                         </p>
                       </div>
                     )}
-                  </div>
-                );
-              })}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
 
