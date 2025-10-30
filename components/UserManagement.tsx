@@ -336,10 +336,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
     const confirmDeleteUser = async () => {
         if (!deletingUserId || !onDeleteUser) return;
         
+        const userToDelete = users.find(u => u.id === deletingUserId);
+        const userName = userToDelete?.name || userToDelete?.email || 'utilisateur';
+        
         setIsDeleting(true);
         try {
+            console.log('🔄 Suppression utilisateur en cours:', { userId: deletingUserId, userName });
             await onDeleteUser(deletingUserId);
             console.log('✅ Utilisateur supprimé avec succès');
+            
+            // Message de succès
+            if (typeof window !== 'undefined' && (window as any).Toast) {
+                (window as any).Toast.success(`${userName} supprimé avec succès`);
+            }
+            
             setDeletingUserId(null);
             
             // Attendre un peu pour que la mise à jour soit visible
