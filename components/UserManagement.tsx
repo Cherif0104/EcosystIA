@@ -144,6 +144,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
         };
     }, [users, onUpdateUser]);
 
+    // Toggle Component réutilisable
+    const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; label?: string }> = ({ checked, onChange, disabled = false, label }) => (
+        <button
+            type="button"
+            onClick={() => !disabled && onChange(!checked)}
+            disabled={disabled}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                checked ? 'bg-emerald-600' : 'bg-gray-300'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            title={label}
+        >
+            <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    checked ? 'translate-x-6' : 'translate-x-1'
+                }`}
+            />
+        </button>
+    );
+
     const handleEdit = (userToEdit: User) => {
         setSelectedUser(userToEdit);
         setModalOpen(true);
@@ -171,15 +190,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
         setProfileUser(null);
     };
 
-    const handleToggleActive = (user: User) => {
-        if (window.confirm(`Voulez-vous ${user.isActive !== false ? 'désactiver' : 'activer'} ${user.name} ?`)) {
-            const newActiveState = !(user.isActive !== false);
-            if (onToggleActive) {
-                onToggleActive(user.id, newActiveState);
-            } else {
-                // Fallback: mise à jour locale
-                onUpdateUser({...user, isActive: newActiveState});
-            }
+    const handleToggleActive = async (user: User, newState: boolean) => {
+        const newActiveState = newState;
+        if (onToggleActive) {
+            await onToggleActive(user.id, newActiveState);
+        } else {
+            // Fallback: mise à jour locale
+            onUpdateUser({...user, isActive: newActiveState});
         }
     };
 
@@ -283,31 +300,31 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
 
                 {/* Métriques */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-lg p-6 border border-blue-200 hover:shadow-xl transition-shadow">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-600">Total Utilisateurs</span>
-                            <i className="fas fa-users text-2xl text-blue-500"></i>
+                            <span className="text-sm font-medium text-gray-700">Total Utilisateurs</span>
+                            <i className="fas fa-users text-2xl text-blue-600"></i>
                         </div>
                         <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
                     </div>
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-lg p-6 border border-green-200 hover:shadow-xl transition-shadow">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-600">Utilisateurs Actifs</span>
-                            <i className="fas fa-user-check text-2xl text-green-500"></i>
+                            <span className="text-sm font-medium text-gray-700">Utilisateurs Actifs</span>
+                            <i className="fas fa-user-check text-2xl text-green-600"></i>
                         </div>
                         <p className="text-3xl font-bold text-gray-900">{activeUsers}</p>
                     </div>
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-lg p-6 border border-purple-200 hover:shadow-xl transition-shadow">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-600">Administrateurs</span>
-                            <i className="fas fa-user-shield text-2xl text-purple-500"></i>
+                            <span className="text-sm font-medium text-gray-700">Administrateurs</span>
+                            <i className="fas fa-user-shield text-2xl text-purple-600"></i>
                         </div>
                         <p className="text-3xl font-bold text-gray-900">{adminUsers}</p>
                     </div>
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-lg p-6 border border-orange-200 hover:shadow-xl transition-shadow">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-600">Équipe</span>
-                            <i className="fas fa-user-tie text-2xl text-orange-500"></i>
+                            <span className="text-sm font-medium text-gray-700">Équipe</span>
+                            <i className="fas fa-user-tie text-2xl text-orange-600"></i>
                         </div>
                         <p className="text-3xl font-bold text-gray-900">{staffUsers}</p>
                     </div>
@@ -409,15 +426,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    {user.isActive !== false ? (
-                                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                                            Actif
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                            Inactif
-                                                        </span>
-                                                    )}
+                                                    <div className="flex items-center gap-3">
+                                                        {user.isActive !== false ? (
+                                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                                Actif
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                                Inactif
+                                                            </span>
+                                                        )}
+                                                        <Toggle 
+                                                            checked={user.isActive !== false}
+                                                            onChange={(newState) => handleToggleActive(user, newState)}
+                                                            label={user.isActive !== false ? 'Activer' : 'Désactiver'}
+                                                        />
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right space-x-2">
                                                     <button 
@@ -433,17 +457,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
                                                     >
                                                         <i className="fas fa-edit mr-2"></i>
                                                         Rôle
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleToggleActive(user)} 
-                                                        className={`font-medium px-3 py-1 rounded transition-colors ${
-                                                            user.isActive !== false
-                                                                ? 'text-red-600 hover:text-red-800 hover:bg-red-50'
-                                                                : 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                                                        }`}
-                                                    >
-                                                        <i className={`fas fa-${user.isActive !== false ? 'ban' : 'check'} mr-2`}></i>
-                                                        {user.isActive !== false ? 'Désactiver' : 'Activer'}
                                                     </button>
                                     </td>
                                 </tr>
