@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { useModulePermissions } from '../hooks/useModulePermissions';
 import { DataService } from '../services/dataService';
-import { User, ModuleName } from '../types';
+import { User, ModuleName, Role } from '../types';
 
 interface UserModulePermissionsProps {
   users: User[];
@@ -35,8 +35,29 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
   const { hasPermission } = useModulePermissions();
   const [selectedUserId, setSelectedUserId] = useState<string | number>('');
   const [permissions, setPermissions] = useState<Record<ModuleName, {canRead: boolean, canWrite: boolean, canDelete: boolean, canApprove: boolean}>>({} as any);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
 
   const selectedUser = users.find(u => u.id === selectedUserId);
+
+  // Filtrer les utilisateurs selon la recherche et le rôle
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const matchesSearch = searchQuery === '' ||
+        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+      
+      return matchesSearch && matchesRole;
+    });
+  }, [users, searchQuery, roleFilter]);
+
+  // Extraire les rôles uniques pour le filtre
+  const uniqueRoles = useMemo(() => {
+    const roles = new Set<Role>(users.map(u => u.role));
+    return Array.from(roles).sort();
+  }, [users]);
 
   // Toggle Component
   const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; label: string }> = ({ checked, onChange, disabled = false, label }) => (
@@ -168,24 +189,86 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
         </div>
       </div>
 
-      {/* Sélection de l'utilisateur */}
+      {/* Barre de recherche et filtres */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <i className="fas fa-user-check text-emerald-600"></i>
           Sélectionner un utilisateur
         </h3>
-        <select
-          value={selectedUserId}
-          onChange={(e) => handleUserSelect(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 font-medium"
-        >
-          <option value="">-- Choisir un utilisateur --</option>
-          {users.map(user => (
-            <option key={user.id} value={user.id}>
-              {user.name || user.email} ({user.email}) - {t(user.role)}
-            </option>
-          ))}
-        </select>
+        
+        {/* Recherche */}
+        <div className="mb-4">
+          <div className="relative">
+            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input
+              type="text"
+              placeholder="Rechercher par nom ou email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        {/* Filtre par rôle */}
+        <div className="mb-4">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as Role | 'all')}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="all">Tous les rôles</option>
+            {uniqueRoles.map(role => (
+              <option key={role} value={role}>
+                {t(role)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Liste des utilisateurs */}
+        <div className="max-h-80 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <i className="fas fa-users text-4xl mb-2"></i>
+              <p>Aucun utilisateur trouvé</p>
+            </div>
+          ) : (
+            filteredUsers.map(user => (
+              <div
+                key={user.id}
+                onClick={() => handleUserSelect(user.id)}
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                  selectedUserId === user.id
+                    ? 'bg-emerald-50 border-emerald-500 shadow-md'
+                    : 'bg-white border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {user.avatar && !user.avatar.startsWith('data:image') ? (
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name || 'Utilisateur'} 
+                      className="w-10 h-10 rounded-full object-cover" 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                      {(user.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{user.name || user.email}</p>
+                    <p className="text-sm text-gray-500">{user.email}</p>
+                  </div>
+                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                    {t(user.role)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {selectedUser && (
@@ -228,59 +311,94 @@ const UserModulePermissions: React.FC<UserModulePermissionsProps> = ({ users }) 
                 const modulePerms = permissions[module] || { canRead: false, canWrite: false, canDelete: false, canApprove: false };
                 
                 return (
-                  <div key={moduleName} className="border border-gray-200 rounded-lg p-5 hover:border-emerald-300 transition-colors bg-gray-50">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
+                  <div key={moduleName} className={`border rounded-lg p-5 transition-all ${
+                    modulePerms.canRead 
+                      ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300' 
+                      : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    {/* En-tête du module avec toggle principal */}
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                      <div className="flex-1">
                         <h4 className="font-semibold text-gray-800 text-lg">{displayName}</h4>
                         <span className="text-xs text-gray-500 uppercase font-mono">{moduleName}</span>
                       </div>
-                      {!modulePerms.canRead && (
-                        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                          <i className="fas fa-lock mr-1"></i>
-                          Module désactivé
+                      <div className="flex items-center gap-4">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          modulePerms.canRead 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          <i className={`fas fa-${modulePerms.canRead ? 'check-circle' : 'lock'} mr-1`}></i>
+                          {modulePerms.canRead ? 'Activé' : 'Désactivé'}
                         </span>
-                      )}
+                        {/* Toggle principal pour activer/désactiver le module */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">Activer le module</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newValue = !modulePerms.canRead;
+                              handlePermissionChange(module, 'canRead', newValue);
+                              if (!newValue) {
+                                handlePermissionChange(module, 'canWrite', false);
+                                handlePermissionChange(module, 'canDelete', false);
+                                handlePermissionChange(module, 'canApprove', false);
+                              }
+                            }}
+                            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                              modulePerms.canRead ? 'bg-emerald-600' : 'bg-gray-300'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                modulePerms.canRead ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-lg border border-gray-200">
-                      {/* 📖 Lecture - L'accès au module */}
-                      <Toggle
-                        label="📖 Lecture"
-                        checked={modulePerms.canRead}
-                        onChange={(value) => {
-                          handlePermissionChange(module, 'canRead', value);
-                          // Si on désactive la lecture, on désactive aussi les autres permissions
-                          if (!value) {
-                            handlePermissionChange(module, 'canWrite', false);
-                            handlePermissionChange(module, 'canDelete', false);
-                            handlePermissionChange(module, 'canApprove', false);
-                          }
-                        }}
-                      />
-                      
-                      {/* ✏️ Écriture - Nécessite Lecture */}
-                      <Toggle
-                        label="✏️ Écriture"
-                        checked={modulePerms.canWrite}
-                        onChange={(value) => handlePermissionChange(module, 'canWrite', value)}
-                        disabled={!modulePerms.canRead}
-                      />
-                      
-                      {/* 🗑️ Suppression - Nécessite Lecture */}
-                      <Toggle
-                        label="🗑️ Suppression"
-                        checked={modulePerms.canDelete}
-                        onChange={(value) => handlePermissionChange(module, 'canDelete', value)}
-                        disabled={!modulePerms.canRead}
-                      />
-                      
-                      {/* ✅ Approbation - Nécessite Lecture */}
-                      <Toggle
-                        label="✅ Approbation"
-                        checked={modulePerms.canApprove}
-                        onChange={(value) => handlePermissionChange(module, 'canApprove', value)}
-                        disabled={!modulePerms.canRead}
-                      />
-                    </div>
+                    
+                    {/* Permissions CRUD sous le module */}
+                    {modulePerms.canRead && (
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <i className="fas fa-key text-emerald-600"></i>
+                          Permissions Fonctionnelles
+                        </h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* ✏️ Écriture */}
+                          <Toggle
+                            label="✏️ Écriture"
+                            checked={modulePerms.canWrite}
+                            onChange={(value) => handlePermissionChange(module, 'canWrite', value)}
+                          />
+                          
+                          {/* 🗑️ Suppression */}
+                          <Toggle
+                            label="🗑️ Suppression"
+                            checked={modulePerms.canDelete}
+                            onChange={(value) => handlePermissionChange(module, 'canDelete', value)}
+                          />
+                          
+                          {/* ✅ Approbation */}
+                          <Toggle
+                            label="✅ Approbation"
+                            checked={modulePerms.canApprove}
+                            onChange={(value) => handlePermissionChange(module, 'canApprove', value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!modulePerms.canRead && (
+                      <div className="bg-gray-100 rounded-lg p-4 border border-gray-200 text-center">
+                        <p className="text-sm text-gray-500 italic">
+                          <i className="fas fa-info-circle mr-2"></i>
+                          Activez le module pour configurer les permissions CRUD
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
