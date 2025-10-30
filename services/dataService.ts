@@ -112,6 +112,32 @@ export class DataService {
     }
   }
 
+  // Fonction pour supprimer un utilisateur (suppression du profil uniquement)
+  static async deleteUser(userId: string | number) {
+    try {
+      console.log('🔄 Delete user:', { userId });
+      
+      // Convertir userId en string si c'est un number
+      const userIdStr = String(userId);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userIdStr);
+      
+      if (error) {
+        console.error('❌ Erreur delete user:', error);
+        throw error;
+      }
+      
+      console.log('✅ User deleted:', { userId: userIdStr });
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('❌ Erreur delete user:', error);
+      return { success: false, error };
+    }
+  }
+
   // Fonction pour récupérer les permissions module d'un utilisateur
   static async getUserModulePermissions(userId: string) {
     try {

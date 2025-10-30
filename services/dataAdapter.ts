@@ -1685,6 +1685,27 @@ export class DataAdapter {
     return false;
   }
 
+  static async deleteUser(userId: string | number): Promise<boolean> {
+    if (this.useSupabase) {
+      try {
+        console.log('🔄 DataAdapter.deleteUser - Delete user:', { userId });
+        
+        const { success, error } = await DataService.deleteUser(userId);
+        if (error) {
+          console.error('❌ Erreur DataAdapter.deleteUser:', error);
+          throw error;
+        }
+        
+        console.log('✅ DataAdapter.deleteUser - User deleted:', { userId });
+        return success;
+      } catch (error) {
+        console.error('❌ Erreur DataAdapter.deleteUser:', error);
+        throw error;
+      }
+    }
+    return false;
+  }
+
   // ===== MEETINGS =====
   static async getMeetings(): Promise<Meeting[]> {
     console.log('🔍 DataAdapter.getMeetings - Appel DataService.getMeetings()');

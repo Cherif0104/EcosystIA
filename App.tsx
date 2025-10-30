@@ -780,10 +780,17 @@ const App: React.FC = () => {
   const handleDeleteUser = async (userId: string | number) => {
     try {
       console.log('🔄 Suppression utilisateur ID:', userId);
-      // Appel à Supabase pour supprimer l'utilisateur
-      // Note: Pour l'instant, suppression locale uniquement
-      setUsers(prev => prev.filter(u => u.id !== userId));
-      console.log('✅ Utilisateur supprimé');
+      
+      // Appel à Supabase via DataAdapter
+      const success = await DataAdapter.deleteUser(userId);
+      
+      if (success) {
+        // Mise à jour locale seulement si Supabase réussit
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        console.log('✅ Utilisateur supprimé de Supabase et localement');
+      } else {
+        throw new Error('Échec de la suppression dans Supabase');
+      }
     } catch (error) {
       console.error('❌ Erreur suppression utilisateur:', error);
       throw error;
