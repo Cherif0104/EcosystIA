@@ -160,6 +160,8 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
     const totalLessons = course.modules.reduce((acc, module) => acc + module.lessons.length, 0);
 
     const handleToggleLesson = (lessonId: string) => {
+        // Note: Les complétions de leçons ne sont pas encore persistées dans Supabase
+        // Pour l'instant, on les garde uniquement en mémoire local
         const completed = new Set(course.completedLessons || []);
         if (completed.has(lessonId)) {
             completed.delete(lessonId);
@@ -174,6 +176,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
             newProgress = 5;
         }
 
+        // Mettre à jour seulement les champs qui ne causent pas d'erreur
         onUpdateCourse({
             ...course,
             completedLessons: newCompletedLessons,

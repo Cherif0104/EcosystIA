@@ -1544,6 +1544,7 @@ export class DataService {
         updated_at: new Date().toISOString()
       };
 
+      // Filtrer seulement les champs qui existent réellement dans la table courses de Supabase
       if (updates.title !== undefined) updateData.title = updates.title;
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.instructor !== undefined) updateData.instructor = updates.instructor;
@@ -1566,6 +1567,11 @@ export class DataService {
       if (updates.driveUrl !== undefined) updateData.drive_url = updates.driveUrl;
       if (updates.otherLinks !== undefined) updateData.other_links = updates.otherLinks;
 
+      // Ignorer les champs calculés : modules, completedLessons, progress
+      // Ces champs ne sont pas stockés dans la table courses
+
+      console.log('🔄 Mise à jour course avec data:', updateData);
+
       const { data, error } = await supabase
         .from('courses')
         .update(updateData)
@@ -1573,7 +1579,10 @@ export class DataService {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur lors de la mise à jour:', error);
+        throw error;
+      }
       console.log('✅ Course mis à jour:', data.id);
       return { data, error: null };
     } catch (error) {
