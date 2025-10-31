@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Course, User } from '../types';
 import ConfirmationModal from './common/ConfirmationModal';
 import CourseCreatePage from './CourseCreatePage';
@@ -16,6 +17,7 @@ interface CourseManagementProps {
 const CourseManagement: React.FC<CourseManagementProps> = ({ courses, users, onAddCourse, onUpdateCourse, onDeleteCourse }) => {
     const { t } = useLocalization();
     const { user } = useAuth();
+    const { hasPermission } = useModulePermissions();
     const [showCourseForm, setShowCourseForm] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
     const [deletingCourseId, setDeletingCourseId] = useState<number | null>(null);
@@ -23,7 +25,12 @@ const CourseManagement: React.FC<CourseManagementProps> = ({ courses, users, onA
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
-    const canManage = user?.role === 'administrator' || user?.role === 'manager' || user?.role === 'supervisor' || user?.role === 'super_administrator';
+    // Tous les utilisateurs peuvent gérer les cours (isolation gérée par RLS)
+    const canManage = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'super_administrator') return true;
+        return hasPermission('course_management', 'write');
+    }, [user, hasPermission]);
 
     // Extraire toutes les catégories uniques
     const categories = useMemo(() => {

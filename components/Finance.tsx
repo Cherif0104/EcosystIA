@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Invoice, Expense, Receipt, RecurringInvoice, RecurringExpense, RecurrenceFrequency, Budget, Project, BudgetLine, BudgetItem } from '../types';
 import ConfirmationModal from './common/ConfirmationModal';
 
@@ -661,6 +662,7 @@ const Finance: React.FC<FinanceProps> = (props) => {
     } = props;
     const { t } = useLocalization();
     const { user } = useAuth();
+    const { hasPermission } = useModulePermissions();
     const [activeTab, setActiveTab] = useState<'invoices' | 'expenses' | 'recurring' | 'budgets'>('invoices');
     const [activeRecurringTab, setActiveRecurringTab] = useState<'invoices' | 'expenses'>('invoices');
     
@@ -829,7 +831,12 @@ const Finance: React.FC<FinanceProps> = (props) => {
         return filtered;
     }, [expenses, searchQuery, expenseStatusFilter, sortBy, sortOrder]);
 
-    const canManage = user?.role === 'manager' || user?.role === 'administrator' || user?.role === 'super_administrator';
+    // Tous les utilisateurs peuvent gérer finances (isolation gérée par RLS)
+    const canManage = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'super_administrator') return true;
+        return hasPermission('finance', 'write');
+    }, [user, hasPermission]);
     
     const handleOpenInvoiceModal = (invoice: Invoice | null = null) => {
         setEditingInvoice(invoice);

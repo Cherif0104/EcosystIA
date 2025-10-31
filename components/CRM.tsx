@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Contact } from '../types';
 import { draftSalesEmail } from '../services/geminiService';
 import ConfirmationModal from './common/ConfirmationModal';
@@ -145,6 +146,7 @@ interface CRMProps {
 const CRM: React.FC<CRMProps> = ({ contacts, onAddContact, onUpdateContact, onDeleteContact }) => {
     const { t } = useLocalization();
     const { user } = useAuth();
+    const { hasPermission } = useModulePermissions();
     const [view, setView] = useState<'list' | 'pipeline'>('list');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -157,7 +159,12 @@ const CRM: React.FC<CRMProps> = ({ contacts, onAddContact, onUpdateContact, onDe
     const [editingContact, setEditingContact] = useState<Contact|null>(null);
     const [deletingContactId, setDeletingContactId] = useState<number|null>(null);
 
-    const canManage = user?.role === 'administrator' || user?.role === 'manager' || user?.role === 'super_administrator';
+    // Tous les utilisateurs peuvent gérer les contacts (isolation gérée par RLS)
+    const canManage = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'super_administrator') return true;
+        return hasPermission('crm_sales', 'write');
+    }, [user, hasPermission]);
     
     const pipelineStatuses: Contact['status'][] = ['Lead', 'Contacted', 'Prospect', 'Customer'];
 

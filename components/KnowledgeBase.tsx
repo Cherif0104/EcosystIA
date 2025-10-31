@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Document } from '../types';
 import { summarizeAndCreateDoc } from '../services/geminiService';
 import ConfirmationModal from './common/ConfirmationModal';
@@ -16,6 +17,7 @@ interface KnowledgeBaseProps {
 const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, onAddDocument, onUpdateDocument, onDeleteDocument }) => {
     const { t } = useLocalization();
     const { user } = useAuth();
+    const { hasPermission } = useModulePermissions();
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -298,7 +300,12 @@ const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ documents, onAddDocument,
         }
     };
 
-    const canManage = user?.role === 'manager' || user?.role === 'administrator' || user?.role === 'super_administrator';
+    // Tous les utilisateurs peuvent gérer documents (isolation gérée par RLS)
+    const canManage = useMemo(() => {
+        if (!user) return false;
+        if (user.role === 'super_administrator') return true;
+        return hasPermission('knowledge_base', 'write');
+    }, [user, hasPermission]);
     const canEdit = (doc: Document) => canManage || doc.createdById === user?.profileId;
 
     // Métriques améliorées

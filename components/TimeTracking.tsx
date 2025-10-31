@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { TimeLog, Project, Course, Meeting, User } from '../types';
 import LogTimeModal from './LogTimeModal';
 import ConfirmationModal from './common/ConfirmationModal';
@@ -165,6 +166,7 @@ interface TimeTrackingProps {
 const TimeTracking: React.FC<TimeTrackingProps> = ({ timeLogs, meetings, users, onAddTimeLog, onDeleteTimeLog, onAddMeeting, onUpdateMeeting, onDeleteMeeting, projects, courses }) => {
   const { t, language } = useLocalization();
   const { user } = useAuth();
+  const { hasPermission } = useModulePermissions();
   const [activeTab, setActiveTab] = useState<'logs' | 'calendar'>('logs');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
