@@ -36,9 +36,17 @@ export class ApiHelper {
       console.log(`🔍 API GET: ${url}`);
       
       const headers = await this.getHeaders();
+      
+      // Créer un AbortController pour timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes
+      
       const response = await fetch(url, {
-        headers
+        headers,
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -47,8 +55,12 @@ export class ApiHelper {
       const data = await response.json();
       console.log(`📊 API GET ${endpoint} - Résultat:`, data?.length || 0, 'éléments');
       return { data, error: null };
-    } catch (error) {
-      console.error(`❌ Erreur API GET ${endpoint}:`, error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error(`⏱️ Timeout API GET ${endpoint} - Réponse non reçue dans les 10 secondes`);
+      } else {
+        console.error(`❌ Erreur API GET ${endpoint}:`, error.message || error);
+      }
       return { data: null, error };
     }
   }
@@ -61,14 +73,22 @@ export class ApiHelper {
       console.log(`🔍 API POST: ${url}`);
       
       const headers = await this.getHeaders();
+      
+      // Créer un AbortController pour timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           ...headers,
           'Prefer': 'return=representation'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -78,8 +98,12 @@ export class ApiHelper {
       const data = await response.json();
       console.log(`✅ API POST ${endpoint} - Créé:`, data[0]?.id);
       return { data: data[0], error: null };
-    } catch (error) {
-      console.error(`❌ Erreur API POST ${endpoint}:`, error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error(`⏱️ Timeout API POST ${endpoint}`);
+      } else {
+        console.error(`❌ Erreur API POST ${endpoint}:`, error.message || error);
+      }
       return { data: null, error };
     }
   }
@@ -92,14 +116,22 @@ export class ApiHelper {
       console.log(`🔍 API PUT: ${url}`);
       
       const headers = await this.getHeaders();
+      
+      // Créer un AbortController pour timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           ...headers,
           'Prefer': 'return=representation'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -109,8 +141,12 @@ export class ApiHelper {
       const data = await response.json();
       console.log(`✅ API PUT ${endpoint} - Mis à jour:`, data[0]?.id);
       return { data: data[0], error: null };
-    } catch (error) {
-      console.error(`❌ Erreur API PUT ${endpoint}:`, error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error(`⏱️ Timeout API PUT ${endpoint}`);
+      } else {
+        console.error(`❌ Erreur API PUT ${endpoint}:`, error.message || error);
+      }
       return { data: null, error };
     }
   }
@@ -123,10 +159,18 @@ export class ApiHelper {
       console.log(`🔍 API DELETE: ${url}`);
       
       const headers = await this.getHeaders();
+      
+      // Créer un AbortController pour timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch(url, {
         method: 'DELETE',
-        headers
+        headers,
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -135,8 +179,12 @@ export class ApiHelper {
       
       console.log(`✅ API DELETE ${endpoint} - Supprimé:`, id);
       return { error: null };
-    } catch (error) {
-      console.error(`❌ Erreur API DELETE ${endpoint}:`, error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error(`⏱️ Timeout API DELETE ${endpoint}`);
+      } else {
+        console.error(`❌ Erreur API DELETE ${endpoint}:`, error.message || error);
+      }
       return { error };
     }
   }
