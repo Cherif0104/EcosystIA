@@ -12,14 +12,38 @@ interface LocalizationContextType {
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
 export const LocalizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>(Language.EN);
+  // Détecter la langue du navigateur ou charger depuis localStorage
+  const getInitialLanguage = (): Language => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('app_language');
+      if (savedLang === 'FR' || savedLang === 'EN') {
+        return savedLang as Language;
+      }
+      // Détecter la langue du navigateur
+      const browserLang = navigator.language.toLowerCase();
+      if (browserLang.startsWith('fr')) {
+        return Language.FR;
+      }
+    }
+    return Language.EN;
+  };
+
+  const [language, setLanguage] = useState<Language>(getInitialLanguage());
+
+  // Sauvegarder la langue dans localStorage quand elle change
+  const handleSetLanguage = useCallback((newLang: Language) => {
+    setLanguage(newLang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('app_language', newLang);
+    }
+  }, []);
 
   const t = useCallback((key: keyof Translation): string => {
     return translations[language][key] || translations[Language.EN][key] || String(key);
   }, [language]);
 
   return (
-    <LocalizationContext.Provider value={{ language, setLanguage, t }}>
+    <LocalizationContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
       {children}
     </LocalizationContext.Provider>
   );
