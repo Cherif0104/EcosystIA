@@ -2213,20 +2213,6 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                         )}
                     </>
                 ) : (
-                    !isDataLoaded ? (
-                        // Afficher un spinner pendant le chargement initial des données
-                        <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
-                            <div className="mb-6">
-                                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-500 mx-auto"></div>
-                            </div>
-                            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                                Chargement des projets...
-                            </h3>
-                            <p className="text-gray-600">
-                                Veuillez patienter pendant le chargement des données
-                            </p>
-                        </div>
-                    ) : (
                         <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
                             <div className="mb-6">
                                 <i className={`fas ${searchQuery || statusFilter !== 'all' ? 'fa-search' : 'fa-folder-open'} fa-5x text-gray-300`}></i>
@@ -2261,11 +2247,10 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                                     className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md hover:shadow-lg"
                                 >
                                     <i className="fas fa-plus mr-2"></i>
-                                    Créer un nouveau projet
-                                </button>
-                            )}
+                                Créer un nouveau projet
+                            </button>
+                        )}
                         </div>
-                    )
                 )}
             </div>
 

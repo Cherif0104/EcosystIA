@@ -865,20 +865,6 @@ const Goals: React.FC<GoalsProps> = ({
                         )}
                     </>
                 ) : (
-                    !isDataLoaded ? (
-                        // Afficher un spinner pendant le chargement initial des données
-                        <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
-                            <div className="mb-6">
-                                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-500 mx-auto"></div>
-                            </div>
-                            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                                Chargement des objectifs...
-                            </h3>
-                            <p className="text-gray-600">
-                                Veuillez patienter pendant le chargement des données
-                            </p>
-                        </div>
-                    ) : (
                         <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
                             <div className="mb-6">
                                 <i className={`fas ${searchQuery || projectFilter !== 'all' || statusFilter !== 'all' ? 'fa-search' : 'fa-bullseye'} fa-5x text-gray-300`}></i>
@@ -918,7 +904,6 @@ const Goals: React.FC<GoalsProps> = ({
                             </button>
                         )}
                         </div>
-                    )
                 )}
             </div>
 
