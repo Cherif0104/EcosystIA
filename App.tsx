@@ -96,42 +96,14 @@ const App: React.FC = () => {
     }
   };
 
-  // Initialisation avec protection de routes
+  // Initialisation simple
   useEffect(() => {
-    const initializeApp = async () => {
-      const startTime = Date.now();
-      logger.info('auth', '🔄 Initialisation de l\'application');
-      logger.debug('session', `Initial view from localStorage: ${savedView}, using: ${validInitialView}`);
-      logger.debug('session', 'Checking authentication state');
-      
-      try {
-        // Vérifier l'authentification
-        const isAuthenticated = await authGuard.checkAuth();
-        
-        if (isAuthenticated) {
-          logger.logAuth('Utilisateur authentifié', { isAuthenticated });
-          console.log('✅ Utilisateur authentifié - accès autorisé');
-          // L'utilisateur reste sur la page actuelle (pas de redirection)
-        } else {
-          logger.logAuth('Utilisateur NON authentifié - redirection vers login', { isAuthenticated });
-          logger.logNavigation(currentView, 'login', 'Not authenticated');
-          console.log('🔒 Utilisateur non authentifié - redirection vers login');
-          // Ne pas utiliser handleSetView ici car on est en train d'initialiser
-          setCurrentView('login');
-        }
-        
-        setIsInitialized(true);
-        logger.logPerformance('App initialization', Date.now() - startTime);
-      } catch (error) {
-        logger.error('auth', 'Erreur initialisation app', error, error as Error);
-        console.error('Erreur initialisation app:', error);
-        // Ne pas utiliser handleSetView ici car on est en train d'initialiser
-        setCurrentView('login');
-        setIsInitialized(true);
-      }
-    };
-
-    initializeApp();
+    const startTime = Date.now();
+    logger.info('auth', '🔄 Initialisation de l\'application');
+    logger.debug('session', `Initial view from localStorage: ${savedView}, using: ${validInitialView}`);
+    
+    setIsInitialized(true);
+    logger.logPerformance('App initialization', Date.now() - startTime);
   }, []);
 
   // Charger les données après initialisation - Logique robuste
