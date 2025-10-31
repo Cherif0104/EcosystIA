@@ -37,7 +37,7 @@ import Finance from './components/Finance';
 
 
 const App: React.FC = () => {
-  const { user, signIn } = useAuth();
+  const { user, signIn, loading: authLoading } = useAuth();
   const { t } = useLocalization();
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
   
@@ -264,20 +264,16 @@ const App: React.FC = () => {
   // Protection de routes - rediriger vers login si non authentifié
   useEffect(() => {
     if (!isInitialized) return;
+    if (authLoading) return; // Attendre que l'authentification soit chargée
     
-    // Délai pour permettre à AuthContext de charger la session
-    const timeoutId = setTimeout(() => {
-      // Rediriger vers login seulement si l'utilisateur n'est pas connecté ET qu'on n'est pas déjà sur login/signup
-      if (!user && currentView !== 'login' && currentView !== 'signup') {
-        console.log('🔒 Protection route - redirection vers login');
-        logger.logNavigation(currentView, 'login', 'Not authenticated - route protection');
-        setCurrentView('login');
-        setIsDataLoaded(false);
-      }
-    }, 500); // 500ms pour permettre à AuthContext de charger la session
-
-    return () => clearTimeout(timeoutId);
-  }, [user, isInitialized, currentView]);
+    // Rediriger vers login seulement si l'utilisateur n'est pas connecté ET qu'on n'est pas déjà sur login/signup
+    if (!user && currentView !== 'login' && currentView !== 'signup') {
+      console.log('🔒 Protection route - redirection vers login');
+      logger.logNavigation(currentView, 'login', 'Not authenticated - route protection');
+      setCurrentView('login');
+      setIsDataLoaded(false);
+    }
+  }, [user, isInitialized, currentView, authLoading]);
 
   // Debug: Log de l'état utilisateur
   useEffect(() => {
