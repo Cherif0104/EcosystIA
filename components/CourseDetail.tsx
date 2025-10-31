@@ -230,8 +230,13 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
     }, [course.id]); // Recharger seulement si le cours change
     
     const handleStartLearning = () => {
+        logger.info('course', 'handleStartLearning appelé');
+        console.log('🚀 Début apprentissage - cours:', course.id, 'progression actuelle:', course.progress);
         if (course.progress === 0) {
+            logger.info('course', 'Mise à jour progression de 0 à 5%');
             onUpdateCourse({ ...course, progress: 5 });
+        } else {
+            logger.info('course', 'Cours déjà commencé, progression:', course.progress);
         }
         // In a more complex app, this might navigate to the first lesson page
     };
@@ -239,6 +244,9 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
     const totalLessons = course.modules?.reduce((acc, module) => acc + module.lessons.length, 0) || 0;
 
     const handleToggleLesson = async (lessonId: string) => {
+        logger.info('course', `handleToggleLesson appelé pour leçon: ${lessonId}`);
+        console.log('📝 Toggle leçon:', lessonId, 'leçons complétées avant:', course.completedLessons?.length || 0);
+        
         // Mise à jour locale immédiate pour feedback rapide
         const completed = new Set(course.completedLessons || []);
         if (completed.has(lessonId)) {
@@ -254,6 +262,8 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
             newProgress = 5;
         }
 
+        console.log('📊 Nouvelle progression:', newProgress, '%, leçons complétées:', newCompletedLessons.length, '/', totalLessons);
+
         // Mettre à jour l'état local immédiatement
         onUpdateCourse({
             ...course,
@@ -264,6 +274,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
         // Sauvegarder dans Supabase de manière asynchrone
         try {
             const userId = (user as any).profileId || user.id;
+            logger.info('course', `Sauvegarde progression: ${newProgress}%, ${newCompletedLessons.length} leçons`);
             const result = await DataService.upsertCourseEnrollment(
                 course.id,
                 String(userId),
@@ -273,6 +284,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
             
             if (result.error) {
                 console.error('❌ Erreur sauvegarde progression:', result.error);
+                logger.error('course', 'Erreur sauvegarde progression', result.error);
                 // Rollback en cas d'erreur
                 onUpdateCourse({
                     ...course,
@@ -282,9 +294,11 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                 alert('Erreur lors de la sauvegarde de la progression');
             } else {
                 console.log('✅ Progression sauvegardée:', { courseId: course.id, progress: newProgress, completedLessons: newCompletedLessons.length });
+                logger.info('course', `Progression sauvegardée avec succès: ${newProgress}%`);
             }
         } catch (error) {
             console.error('❌ Erreur sauvegarde progression:', error);
+            logger.error('course', 'Erreur sauvegarde progression (exception)', error);
             // Rollback en cas d'erreur
             onUpdateCourse({
                 ...course,
