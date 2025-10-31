@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
+import { useModulePermissions } from '../hooks/useModulePermissions';
 import { Project, Objective, KeyResult } from '../types';
 import { generateOKRs } from '../services/geminiService';
 import ConfirmationModal from './common/ConfirmationModal';
@@ -153,6 +154,7 @@ const Goals: React.FC<GoalsProps> = ({
 }) => {
     const { t } = useLocalization();
     const { user: currentUser } = useAuth();
+    const { hasPermission } = useModulePermissions();
     
     // États pour recherche, filtres et vue
     const [searchQuery, setSearchQuery] = useState('');
@@ -173,9 +175,16 @@ const Goals: React.FC<GoalsProps> = ({
     const [isGeneratingOKRs, setIsGeneratingOKRs] = useState(false);
     const [selectedProjectForOKRs, setSelectedProjectForOKRs] = useState<Project | null>(null);
 
-    const canManage = currentUser?.role === 'administrator' || 
-                      currentUser?.role === 'manager' || 
-                      currentUser?.role === 'super_administrator';
+    // Tous les utilisateurs peuvent créer des objectifs (isolation gérée par RLS)
+    const canManage = useMemo(() => {
+        if (!currentUser) return false;
+        // Super admin a tous les droits
+        if (currentUser.role === 'super_administrator') {
+            return true;
+        }
+        // Vérifier les permissions de write pour le module goals_okrs
+        return hasPermission('goals_okrs', 'write');
+    }, [currentUser, hasPermission]);
 
     // Calculer la progression globale d'un objectif
     const calculateOverallProgress = (keyResults: KeyResult[]): number => {
