@@ -404,6 +404,11 @@ const App: React.FC = () => {
     return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div></div>;
   }
 
+  // Attendre que l'authentification soit chargée avant de décider quoi afficher
+  if (authLoading) {
+    return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div></div>;
+  }
+
   if (!user) {
     if (authView === 'signup') {
         return <Signup onSwitchToLogin={() => setAuthView('login')} onSignupSuccess={() => {
