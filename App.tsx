@@ -47,8 +47,6 @@ const App: React.FC = () => {
   const validInitialView = savedView && savedView !== 'login' && savedView !== 'signup' ? savedView : 'dashboard';
   const [currentView, setCurrentView] = useState(validInitialView);
   
-  logger.info('session', `Initial view from localStorage: ${savedView}, using: ${validInitialView}`);
-  
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -103,6 +101,7 @@ const App: React.FC = () => {
     const initializeApp = async () => {
       const startTime = Date.now();
       logger.info('auth', '🔄 Initialisation de l\'application');
+      logger.debug('session', `Initial view from localStorage: ${savedView}, using: ${validInitialView}`);
       logger.debug('session', 'Checking authentication state');
       
       try {
