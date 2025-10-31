@@ -490,19 +490,19 @@ const Goals: React.FC<GoalsProps> = ({
                                 onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'progress')}
                                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
-                                <option value="date">Trier par date</option>
-                                <option value="title">Trier par titre</option>
-                                <option value="progress">Trier par progression</option>
+                                <option value="date">{t('sort_by_date')}</option>
+                                <option value="title">{t('sort_by_title')}</option>
+                                <option value="progress">{t('sort_by_progress')}</option>
                             </select>
 
                             {/* Ordre de tri */}
                             <button
                                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                                 className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
-                                title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+                                title={sortOrder === 'asc' ? t('sort_ascending') : t('sort_descending')}
                             >
                                 <i className={`fas ${sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} mr-2`}></i>
-                                {sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+                                {sortOrder === 'asc' ? t('sort_ascending') : t('sort_descending')}
                             </button>
                         </div>
                     </div>
@@ -510,15 +510,15 @@ const Goals: React.FC<GoalsProps> = ({
                     {/* Sélecteur de vue */}
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                         <div className="text-sm text-gray-600">
-                            {filteredObjectives.length} {filteredObjectives.length > 1 ? 'objectifs trouvés' : 'objectif trouvé'}
+                            {filteredObjectives.length} {filteredObjectives.length > 1 ? t('objective_found_plural') : t('objective_found_singular')}
                             {searchQuery && (
                                 <span className="ml-2">
-                                    pour "{searchQuery}"
+                                    {t('for_search')} "{searchQuery}"
                                 </span>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600 mr-2">Vue :</span>
+                            <span className="text-sm text-gray-600 mr-2">{t('view_label')}:</span>
                             <button
                                 onClick={() => setViewMode('grid')}
                                 className={`p-2 rounded-lg transition-all ${
@@ -526,7 +526,7 @@ const Goals: React.FC<GoalsProps> = ({
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title="Vue en grille"
+                                title={t('grid_view')}
                             >
                                 <i className="fas fa-th"></i>
                             </button>
@@ -537,7 +537,7 @@ const Goals: React.FC<GoalsProps> = ({
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title="Vue en liste"
+                                title={t('list_view')}
                             >
                                 <i className="fas fa-list"></i>
                             </button>
@@ -548,7 +548,7 @@ const Goals: React.FC<GoalsProps> = ({
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title="Vue compacte"
+                                title={t('compact_view')}
                             >
                                 <i className="fas fa-grip-lines"></i>
                             </button>

@@ -580,20 +580,21 @@ const ProjectDetailModal: React.FC<{
                     <div className="w-80 bg-gray-50 border-r p-6 flex flex-col">
                         <div className="space-y-4">
                             <div>
-                                <h3 className="font-semibold text-gray-700 mb-2">Statut</h3>
+                                <h3 className="font-semibold text-gray-700 mb-2">{t('status')}</h3>
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusStyles[currentProject.status]}`}>
-                                    {currentProject.status === 'In Progress' ? 'En cours' : 
-                                     currentProject.status === 'Completed' ? 'Terminé' : 'Non démarré'}
+                                    {currentProject.status === 'Not Started' ? t('not_started') :
+                                     currentProject.status === 'In Progress' ? t('in_progress') : 
+                                     currentProject.status === 'Completed' ? t('completed') : currentProject.status}
                                 </span>
                             </div>
                             
                             <div>
-                                <h3 className="font-semibold text-gray-700 mb-2">Date d'échéance</h3>
-                                <p className="text-gray-600">{currentProject.dueDate ? new Date(currentProject.dueDate).toLocaleDateString('fr-FR') : 'Aucune date'}</p>
+                                <h3 className="font-semibold text-gray-700 mb-2">{t('due_date')}</h3>
+                                <p className="text-gray-600">{currentProject.dueDate ? new Date(currentProject.dueDate).toLocaleDateString() : 'N/A'}</p>
                             </div>
                             
                             <div>
-                                <h3 className="font-semibold text-gray-700 mb-2">Membres de l'équipe</h3>
+                                <h3 className="font-semibold text-gray-700 mb-2">{t('team_members')}</h3>
                                 <div className="space-y-2">
                                     {currentProject.team.map(member => (
                                         <div key={member.id} className="flex items-center space-x-2">
@@ -1821,19 +1822,19 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                                 onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'status')}
                                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
-                                <option value="date">Trier par date</option>
-                                <option value="title">Trier par titre</option>
-                                <option value="status">Trier par statut</option>
+                                <option value="date">{t('sort_by_date')}</option>
+                                <option value="title">{t('sort_by_title')}</option>
+                                <option value="status">{t('sort_by_status')}</option>
                             </select>
 
                             {/* Ordre de tri */}
                             <button
                                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                                 className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
-                                title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+                                title={sortOrder === 'asc' ? t('sort_ascending') : t('sort_descending')}
                             >
                                 <i className={`fas ${sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} mr-2`}></i>
-                                {sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+                                {sortOrder === 'asc' ? t('sort_ascending') : t('sort_descending')}
                             </button>
                         </div>
                     </div>
@@ -1841,15 +1842,15 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                     {/* Sélecteur de vue */}
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                         <div className="text-sm text-gray-600">
-                            {filteredProjects.length} {filteredProjects.length > 1 ? 'projets trouvés' : 'projet trouvé'}
+                            {filteredProjects.length} {filteredProjects.length > 1 ? t('project_found_plural') : t('project_found_singular')}
                             {searchQuery && (
                                 <span className="ml-2">
-                                    pour "{searchQuery}"
+                                    {t('for_search')} "{searchQuery}"
                                 </span>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600 mr-2">Vue :</span>
+                            <span className="text-sm text-gray-600 mr-2">{t('view_label')}:</span>
                             <button
                                 onClick={() => setViewMode('grid')}
                                 className={`p-2 rounded-lg transition-all ${
@@ -1857,7 +1858,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title="Vue en grille"
+                                title={t('grid_view')}
                             >
                                 <i className="fas fa-th"></i>
                             </button>
@@ -1868,7 +1869,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title="Vue en liste"
+                                title={t('list_view')}
                             >
                                 <i className="fas fa-list"></i>
                             </button>
@@ -1879,7 +1880,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                                         ? 'bg-emerald-600 text-white shadow-md'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
-                                title="Vue compacte"
+                                title={t('compact_view')}
                             >
                                 <i className="fas fa-grip-lines"></i>
                             </button>
