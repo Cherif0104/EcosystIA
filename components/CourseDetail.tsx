@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContextSupabase';
 import { Course, Lesson, Module, TimeLog, Project, EvidenceDocument } from '../types';
 import LogTimeModal from './LogTimeModal';
+import { DataService } from '../services/dataService';
 
 interface CourseDetailProps {
     course: Course;
@@ -147,8 +148,73 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
     const { t } = useLocalization();
     const { user } = useAuth();
     const [isLogTimeModalOpen, setLogTimeModalOpen] = useState(false);
+    const [isLoadingModules, setIsLoadingModules] = useState(true);
 
     if (!user) return null;
+
+    // Charger les modules et la progression au montage du composant
+    useEffect(() => {
+        const loadCourseData = async () => {
+            if (!user || !course.id) return;
+            
+            // Ne charger que si les modules ne sont pas déjà chargés
+            if (course.modules && course.modules.length > 0) {
+                setIsLoadingModules(false);
+                return;
+            }
+            
+            setIsLoadingModules(true);
+            try {
+                const userId = (user as any).profileId || user.id;
+                
+                // Charger les modules et leçons
+                const modulesResult = await DataService.getCourseModules(course.id);
+                if (!modulesResult.error && modulesResult.data) {
+                    const mappedModules: Module[] = modulesResult.data.map((mod: any) => ({
+                        id: mod.id,
+                        title: mod.title,
+                        lessons: (mod.lessons || []).map((lesson: any) => ({
+                            id: lesson.id,
+                            title: lesson.title,
+                            type: lesson.type || 'video',
+                            duration: lesson.duration || '0 min',
+                            icon: lesson.icon || 'fas fa-play-circle'
+                        }))
+                    }));
+                    
+                    // Charger la progression de l'utilisateur
+                    const enrollmentResult = await DataService.getCourseEnrollment(course.id, String(userId));
+                    const completedLessons = enrollmentResult.data?.completed_lessons || [];
+                    const progress = enrollmentResult.data?.progress || 0;
+                    
+                    // Mettre à jour le cours avec les modules et la progression
+                    onUpdateCourse({
+                        ...course,
+                        modules: mappedModules,
+                        completedLessons,
+                        progress
+                    });
+
+                    // Créer l'enrollment s'il n'existe pas encore (inscription auto)
+                    if (!enrollmentResult.data && mappedModules.length > 0) {
+                        console.log('📝 Inscription automatique au cours:', course.id);
+                        await DataService.upsertCourseEnrollment(
+                            course.id,
+                            String(userId),
+                            0,
+                            []
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erreur chargement modules:', error);
+            } finally {
+                setIsLoadingModules(false);
+            }
+        };
+
+        loadCourseData();
+    }, [course.id]); // Recharger seulement si le cours change
     
     const handleStartLearning = () => {
         if (course.progress === 0) {
@@ -157,11 +223,10 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
         // In a more complex app, this might navigate to the first lesson page
     };
 
-    const totalLessons = course.modules.reduce((acc, module) => acc + module.lessons.length, 0);
+    const totalLessons = course.modules?.reduce((acc, module) => acc + module.lessons.length, 0) || 0;
 
-    const handleToggleLesson = (lessonId: string) => {
-        // Note: Les complétions de leçons ne sont pas encore persistées dans Supabase
-        // Pour l'instant, on les garde uniquement en mémoire local
+    const handleToggleLesson = async (lessonId: string) => {
+        // Mise à jour locale immédiate pour feedback rapide
         const completed = new Set(course.completedLessons || []);
         if (completed.has(lessonId)) {
             completed.delete(lessonId);
@@ -176,12 +241,44 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
             newProgress = 5;
         }
 
-        // Mettre à jour seulement les champs qui ne causent pas d'erreur
+        // Mettre à jour l'état local immédiatement
         onUpdateCourse({
             ...course,
             completedLessons: newCompletedLessons,
             progress: newProgress,
         });
+
+        // Sauvegarder dans Supabase de manière asynchrone
+        try {
+            const userId = (user as any).profileId || user.id;
+            const result = await DataService.upsertCourseEnrollment(
+                course.id,
+                String(userId),
+                newProgress,
+                newCompletedLessons
+            );
+            
+            if (result.error) {
+                console.error('❌ Erreur sauvegarde progression:', result.error);
+                // Rollback en cas d'erreur
+                onUpdateCourse({
+                    ...course,
+                    completedLessons: course.completedLessons || [],
+                    progress: course.progress || 0,
+                });
+                alert('Erreur lors de la sauvegarde de la progression');
+            } else {
+                console.log('✅ Progression sauvegardée:', { courseId: course.id, progress: newProgress, completedLessons: newCompletedLessons.length });
+            }
+        } catch (error) {
+            console.error('❌ Erreur sauvegarde progression:', error);
+            // Rollback en cas d'erreur
+            onUpdateCourse({
+                ...course,
+                completedLessons: course.completedLessons || [],
+                progress: course.progress || 0,
+            });
+        }
     };
 
     const totalMinutesLogged = timeLogs
@@ -242,7 +339,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-600">Modules</p>
-                                        <p className="text-xl font-bold text-gray-900">{course.modules.length}</p>
+                                        <p className="text-xl font-bold text-gray-900">{course.modules?.length || 0}</p>
                                     </div>
                                 </div>
                             </div>
@@ -278,17 +375,29 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                                 <i className="fas fa-book-open mr-3 text-emerald-600"></i>
                                 {t('modules')}
                             </h2>
-                            {course.modules.map((module, index) => (
-                                <ModuleItem 
-                                    key={module.id} 
-                                    module={module} 
-                                    moduleIndex={index} 
-                                    course={course} 
-                                    onUpdateCourse={onUpdateCourse} 
-                                    completedLessons={course.completedLessons || []} 
-                                    onToggleLesson={handleToggleLesson} 
-                                />
-                            ))}
+                            {isLoadingModules ? (
+                                <div className="text-center py-20 bg-white rounded-xl shadow-lg">
+                                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                                    <p className="text-gray-600">Chargement des modules...</p>
+                                </div>
+                            ) : course.modules && course.modules.length > 0 ? (
+                                course.modules.map((module, index) => (
+                                    <ModuleItem 
+                                        key={module.id} 
+                                        module={module} 
+                                        moduleIndex={index} 
+                                        course={course} 
+                                        onUpdateCourse={onUpdateCourse} 
+                                        completedLessons={course.completedLessons || []} 
+                                        onToggleLesson={handleToggleLesson} 
+                                    />
+                                ))
+                            ) : (
+                                <div className="text-center py-20 bg-white rounded-xl shadow-lg">
+                                    <i className="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
+                                    <p className="text-gray-600">Aucun module disponible pour ce cours</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

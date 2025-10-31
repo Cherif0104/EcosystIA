@@ -1972,6 +1972,92 @@ export class DataService {
     }
   }
 
+  // Fonction pour charger les modules et leçons d'un cours
+  static async getCourseModules(courseId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('course_modules')
+        .select(`
+          *,
+          lessons:course_lessons(*)
+        `)
+        .eq('course_id', courseId)
+        .order('order_index');
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Erreur récupération modules:', error);
+      return { data: null, error };
+    }
+  }
+
+  // Fonction pour récupérer la progression d'un utilisateur pour un cours
+  static async getCourseEnrollment(courseId: string, userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('course_enrollments')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Erreur récupération enrollment:', error);
+      return { data: null, error };
+    }
+  }
+
+  // Fonction pour créer ou mettre à jour l'enrollment (inscription + progression)
+  static async upsertCourseEnrollment(courseId: string, userId: string, progress: number, completedLessons: string[]) {
+    try {
+      // Vérifier si l'enrollment existe déjà
+      const existing = await this.getCourseEnrollment(courseId, userId);
+      
+      if (existing.data) {
+        // Mettre à jour l'enrollment existant
+        const { data, error } = await supabase
+          .from('course_enrollments')
+          .update({
+            progress,
+            completed_lessons: completedLessons,
+            updated_at: new Date().toISOString()
+          })
+          .eq('course_id', courseId)
+          .eq('user_id', userId)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        console.log('✅ Enrollment mis à jour:', data.id);
+        return { data, error: null };
+      } else {
+        // Créer un nouvel enrollment
+        const { data, error } = await supabase
+          .from('course_enrollments')
+          .insert({
+            course_id: courseId,
+            user_id: userId,
+            progress,
+            completed_lessons: completedLessons,
+            status: 'active',
+            enrolled_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        console.log('✅ Enrollment créé:', data.id);
+        return { data, error: null };
+      }
+    } catch (error) {
+      console.error('❌ Erreur upsert enrollment:', error);
+      return { data: null, error };
+    }
+  }
+
   // ===== OBJECTIVES =====
   static async getObjectives() {
     try {
