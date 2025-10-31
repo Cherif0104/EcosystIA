@@ -274,7 +274,7 @@ const App: React.FC = () => {
         setCurrentView('login');
         setIsDataLoaded(false);
       }
-    }, 200); // 200ms pour permettre à AuthContext de charger
+    }, 500); // 500ms pour permettre à AuthContext de charger la session
 
     return () => clearTimeout(timeoutId);
   }, [user, isInitialized, currentView]);
