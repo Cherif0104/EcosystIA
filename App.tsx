@@ -858,6 +858,7 @@ const App: React.FC = () => {
 
   // JOBS
   const handleAddJob = async (newJob: Omit<Job, 'id' | 'applicants'>) => {
+    setLoadingOperation('create_job');
     setIsLoading(true);
     try {
       console.log('🔄 Création job avec données:', newJob);
@@ -869,11 +870,13 @@ const App: React.FC = () => {
       console.error('❌ Erreur création job:', error);
       alert('Erreur lors de la création de l\'offre d\'emploi. Veuillez réessayer.');
     } finally {
+      setLoadingOperation(null);
       setIsLoading(false);
     }
   };
 
   const handleUpdateJob = async (updatedJob: Job) => {
+    setLoadingOperation('update_job');
     setIsLoading(true);
     try {
       console.log('🔄 Mise à jour job ID:', updatedJob.id);
@@ -884,11 +887,13 @@ const App: React.FC = () => {
       console.error('❌ Erreur mise à jour job:', error);
       alert('Erreur lors de la mise à jour de l\'offre d\'emploi. Veuillez réessayer.');
     } finally {
+      setLoadingOperation(null);
       setIsLoading(false);
     }
   };
 
   const handleDeleteJob = async (jobId: number) => {
+    setLoadingOperation('delete_job');
     setIsLoading(true);
     try {
       console.log('🔄 Suppression job ID:', jobId);
@@ -899,6 +904,7 @@ const App: React.FC = () => {
       console.error('❌ Erreur suppression job:', error);
       alert('Erreur lors de la suppression de l\'offre d\'emploi. Veuillez réessayer.');
     } finally {
+      setLoadingOperation(null);
       setIsLoading(false);
     }
   };
@@ -1082,6 +1088,8 @@ const App: React.FC = () => {
 
   // COURSES
   const handleAddCourse = async (courseData: Omit<Course, 'id'>) => {
+    setLoadingOperation('create_course');
+    setIsLoading(true);
     try {
       const newCourse = await DataAdapter.createCourse(courseData);
       if (newCourse) {
@@ -1089,10 +1097,15 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur création cours:', error);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   };
   
   const handleUpdateCourse = async (updatedCourse: Course) => {
+    setLoadingOperation('update_course');
+    setIsLoading(true);
     try {
       const updated = await DataAdapter.updateCourse(updatedCourse.id, updatedCourse);
       if (updated) {
@@ -1100,10 +1113,15 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur mise à jour cours:', error);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   };
   
   const handleDeleteCourse = async (courseId: string) => {
+    setLoadingOperation('delete_course');
+    setIsLoading(true);
     try {
       const success = await DataAdapter.deleteCourse(courseId);
       if (success) {
@@ -1111,12 +1129,17 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur suppression cours:', error);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   };
 
 
   // CONTACTS (CRM)
   const handleAddContact = async (contactData: Omit<Contact, 'id'>) => {
+    setLoadingOperation('create_contact');
+    setIsLoading(true);
     try {
       const newContact = await DataAdapter.createContact(contactData);
       if (newContact) {
@@ -1127,18 +1150,37 @@ const App: React.FC = () => {
       // Fallback vers l'ancienne méthode
       const fallbackContact: Contact = { ...contactData, id: Date.now() };
       setContacts(prev => [fallbackContact, ...prev]);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   };
-  const handleUpdateContact = (updatedContact: Contact) => {
+  const handleUpdateContact = async (updatedContact: Contact) => {
+    setLoadingOperation('update_contact');
+    setIsLoading(true);
+    try {
       setContacts(prev => prev.map(c => c.id === updatedContact.id ? updatedContact : c));
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
-  const handleDeleteContact = (contactId: number) => {
+  const handleDeleteContact = async (contactId: number) => {
+    setLoadingOperation('delete_contact');
+    setIsLoading(true);
+    try {
       setContacts(prev => prev.filter(c => c.id !== contactId));
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
+    }
   };
 
   
   // DOCUMENTS (Knowledge Base)
   const handleAddDocument = async (documentData: Omit<Document, 'id'>) => {
+    setLoadingOperation('create_document');
+    setIsLoading(true);
     try {
       const newDocument = await DataAdapter.createDocument(documentData);
       if (newDocument) {
@@ -1146,10 +1188,15 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur création document:', error);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   }
 
   const handleUpdateDocument = async (updatedDocument: Document) => {
+    setLoadingOperation('update_document');
+    setIsLoading(true);
     try {
       const result = await DataAdapter.updateDocument(updatedDocument.id, updatedDocument);
       if (result) {
@@ -1157,10 +1204,15 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur mise à jour document:', error);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   }
 
   const handleDeleteDocument = async (documentId: string) => {
+    setLoadingOperation('delete_document');
+    setIsLoading(true);
     try {
       const success = await DataAdapter.deleteDocument(documentId);
       if (success) {
@@ -1168,6 +1220,9 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur suppression document:', error);
+    } finally {
+      setLoadingOperation(null);
+      setIsLoading(false);
     }
   }
 
@@ -1225,9 +1280,6 @@ const App: React.FC = () => {
           courses={courses}
           users={users}
           onSelectCourse={handleSelectCourse}
-          onAddCourse={handleAddCourse}
-          onUpdateCourse={handleUpdateCourse}
-          onDeleteCourse={handleDeleteCourse}
         />;
       case 'course_detail':
         const course = courses.find(c => c.id === selectedCourseId);
@@ -1239,9 +1291,11 @@ const App: React.FC = () => {
                     onAddCourse={handleAddCourse}
                     onUpdateCourse={handleUpdateCourse}
                     onDeleteCourse={handleDeleteCourse}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                   />;
       case 'jobs':
-        return <Jobs jobs={jobs} setJobs={setJobs} setView={handleSetView}/>;
+        return <Jobs jobs={jobs} setJobs={setJobs} setView={handleSetView} isLoading={isLoading} loadingOperation={loadingOperation}/>;
       case 'create_job':
         return <CreateJob onAddJob={handleAddJob} onBack={() => handleSetView('jobs')} />;
       case 'job_management':
@@ -1251,6 +1305,8 @@ const App: React.FC = () => {
                   onUpdateJob={handleUpdateJob}
                   onDeleteJob={handleDeleteJob}
                   onNavigate={handleSetView}
+                  isLoading={isLoading}
+                  loadingOperation={loadingOperation}
                 />;
       case 'leave_management_admin':
         return <LeaveManagementAdmin
@@ -1268,6 +1324,8 @@ const App: React.FC = () => {
                     onAddContact={handleAddContact}
                     onUpdateContact={handleUpdateContact}
                     onDeleteContact={handleDeleteContact}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                 />;
       case 'knowledge_base':
         return <KnowledgeBase 
@@ -1275,6 +1333,8 @@ const App: React.FC = () => {
                     onAddDocument={handleAddDocument}
                     onUpdateDocument={handleUpdateDocument}
                     onDeleteDocument={handleDeleteDocument}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                 />;
       case 'leave_management':
         return <LeaveManagement 
@@ -1283,6 +1343,8 @@ const App: React.FC = () => {
                     onAddLeaveRequest={handleAddLeaveRequest}
                     onUpdateLeaveRequest={handleUpdateLeaveRequest}
                     onDeleteLeaveRequest={handleDeleteLeaveRequest}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                 />;
       case 'finance':
         return <Finance 
@@ -1307,6 +1369,8 @@ const App: React.FC = () => {
                     onAddBudget={handleAddBudget}
                     onUpdateBudget={handleUpdateBudget}
                     onDeleteBudget={handleDeleteBudget}
+                    isLoading={isLoading}
+                    loadingOperation={loadingOperation}
                 />;
       case 'ai_coach':
         return <AICoach />;
@@ -1336,7 +1400,16 @@ const App: React.FC = () => {
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
           <div className="container mx-auto px-6 py-8">
-            {renderView()}
+            {!isDataLoaded ? (
+              <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600 font-medium">Chargement des données...</p>
+                </div>
+              </div>
+            ) : (
+              renderView()
+            )}
           </div>
         </main>
       </div>
