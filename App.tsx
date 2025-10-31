@@ -265,13 +265,18 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!isInitialized) return;
     
-    // Rediriger vers login seulement si l'utilisateur n'est pas connecté ET qu'on n'est pas déjà sur login/signup
-    if (!user && currentView !== 'login' && currentView !== 'signup') {
-      console.log('🔒 Protection route - redirection vers login');
-      logger.logNavigation(currentView, 'login', 'Not authenticated - route protection');
-      setCurrentView('login');
-      setIsDataLoaded(false);
-    }
+    // Délai pour permettre à AuthContext de charger la session
+    const timeoutId = setTimeout(() => {
+      // Rediriger vers login seulement si l'utilisateur n'est pas connecté ET qu'on n'est pas déjà sur login/signup
+      if (!user && currentView !== 'login' && currentView !== 'signup') {
+        console.log('🔒 Protection route - redirection vers login');
+        logger.logNavigation(currentView, 'login', 'Not authenticated - route protection');
+        setCurrentView('login');
+        setIsDataLoaded(false);
+      }
+    }, 200); // 200ms pour permettre à AuthContext de charger
+
+    return () => clearTimeout(timeoutId);
   }, [user, isInitialized, currentView]);
 
   // Debug: Log de l'état utilisateur
