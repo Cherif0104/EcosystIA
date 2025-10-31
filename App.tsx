@@ -111,6 +111,9 @@ const App: React.FC = () => {
     if (!isInitialized) return; // Attendre l'initialisation seulement
     
     const loadData = async () => {
+      // Réinitialiser isDataLoaded à false au début du chargement (important pour le refresh)
+      setIsDataLoaded(false);
+      
       try {
         if (user) {
           console.log('🔄 Chargement des projets depuis Supabase...');
@@ -1403,10 +1406,23 @@ const App: React.FC = () => {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
           <div className="container mx-auto px-6 py-8">
             {!isDataLoaded ? (
-              <div className="flex items-center justify-center h-screen">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-                  <p className="text-gray-600 font-medium">Chargement des données...</p>
+              <div className="fixed inset-0 bg-white bg-opacity-98 flex items-center justify-center z-[9999] backdrop-blur-sm">
+                <div className="text-center max-w-md px-6">
+                  <div className="animate-spin rounded-full h-24 w-24 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-6 shadow-lg"></div>
+                  <h2 className="text-3xl font-bold text-gray-800 mb-3">
+                    Chargement des données...
+                  </h2>
+                  <p className="text-gray-600 text-lg mb-6">
+                    Veuillez patienter pendant que nous chargeons vos informations
+                  </p>
+                  <div className="flex items-center justify-center space-x-2 mb-4">
+                    <div className="w-3 h-3 bg-emerald-600 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                    <div className="w-3 h-3 bg-emerald-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-3 h-3 bg-emerald-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div className="bg-emerald-600 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                  </div>
                 </div>
               </div>
             ) : (
