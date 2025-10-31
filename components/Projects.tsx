@@ -2214,44 +2214,44 @@ const Projects: React.FC<ProjectsProps> = ({ projects, users, timeLogs, onUpdate
                         )}
                     </>
                 ) : (
-                        <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
-                            <div className="mb-6">
-                                <i className={`fas ${searchQuery || statusFilter !== 'all' ? 'fa-search' : 'fa-folder-open'} fa-5x text-gray-300`}></i>
-                            </div>
-                            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                                {searchQuery || statusFilter !== 'all' 
-                                    ? 'Aucun projet ne correspond à vos critères' 
-                                    : 'Aucun projet créé pour le moment'
-                                }
-                            </h3>
-                            <p className="text-gray-600 mb-6">
-                                {searchQuery || statusFilter !== 'all'
-                                    ? 'Essayez de modifier vos critères de recherche ou de filtrage'
-                                    : 'Commencez par créer votre premier projet pour organiser votre travail'
-                                }
-                            </p>
-                            {(searchQuery || statusFilter !== 'all') && (
-                                <button 
-                                    onClick={() => {
-                                        setSearchQuery('');
-                                        setStatusFilter('all');
-                                    }}
-                                    className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-semibold shadow-md hover:shadow-lg mr-3"
-                                >
-                                    <i className="fas fa-times mr-2"></i>
-                                    Réinitialiser les filtres
-                                </button>
-                            )}
-                            {canManage && (
-                                <button 
-                                    onClick={() => setIsProjectCreatePageOpen(true)}
-                                    className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md hover:shadow-lg"
-                                >
-                                    <i className="fas fa-plus mr-2"></i>
+                    <div className="text-center py-20 px-4 bg-white rounded-xl shadow-lg">
+                        <div className="mb-6">
+                            <i className={`fas ${searchQuery || statusFilter !== 'all' ? 'fa-search' : 'fa-folder-open'} fa-5x text-gray-300`}></i>
+                        </div>
+                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                            {searchQuery || statusFilter !== 'all' 
+                                ? 'Aucun projet ne correspond à vos critères' 
+                                : 'Aucun projet créé pour le moment'
+                            }
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                            {searchQuery || statusFilter !== 'all'
+                                ? 'Essayez de modifier vos critères de recherche ou de filtrage'
+                                : 'Commencez par créer votre premier projet pour organiser votre travail'
+                            }
+                        </p>
+                        {(searchQuery || statusFilter !== 'all') && (
+                            <button 
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setStatusFilter('all');
+                                }}
+                                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-semibold shadow-md hover:shadow-lg mr-3"
+                            >
+                                <i className="fas fa-times mr-2"></i>
+                                Réinitialiser les filtres
+                            </button>
+                        )}
+                        {canManage && (
+                            <button 
+                                onClick={() => setIsProjectCreatePageOpen(true)}
+                                className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md hover:shadow-lg"
+                            >
+                                <i className="fas fa-plus mr-2"></i>
                                 Créer un nouveau projet
                             </button>
                         )}
-                        </div>
+                    </div>
                 )}
             </div>
 

@@ -252,7 +252,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
         setSelectedUser(userToEdit);
         setModalOpen(true);
     };
-
+    
     const handleEditProfile = (userToEdit: User) => {
         setProfileUser(userToEdit);
         setProfileModalOpen(true);
@@ -283,8 +283,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdateUser, on
             // Attendre un peu pour que la mise à jour soit visible
             setTimeout(() => {
                 setIsUpdatingRole(false);
-                setModalOpen(false);
-                setSelectedUser(null);
+        setModalOpen(false);
+        setSelectedUser(null);
             }, 500);
         } catch (error) {
             console.error('❌ Erreur modification rôle:', error);

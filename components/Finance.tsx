@@ -1449,5 +1449,3 @@ const Finance: React.FC<FinanceProps> = (props) => {
     </>
     );
 };
-
-export default Finance;

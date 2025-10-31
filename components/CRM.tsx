@@ -601,5 +601,3 @@ const CRM: React.FC<CRMProps> = ({ contacts, onAddContact, onUpdateContact, onDe
         </div>
     );
 };
-
-export default CRM;
