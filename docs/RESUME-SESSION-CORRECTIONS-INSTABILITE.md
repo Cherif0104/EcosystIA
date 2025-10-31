@@ -1,11 +1,11 @@
 # Résumé Session : Corrections d'Instabilité
 
 ## Date : Janvier 2025
-## Version : 2.2
+## Version : 2.3
 
 ## Vue d'Ensemble
 
-Cette session a permis de corriger **8 bugs d'instabilité** majeurs identifiés grâce au système de logging. L'application est maintenant stable et offre une excellente expérience utilisateur.
+Cette session a permis de corriger **9 bugs d'instabilité** majeurs identifiés grâce au système de logging. L'application est maintenant stable et offre une excellente expérience utilisateur. **Tous les bugs critiques signalés par le client ont été résolus.**
 
 ---
 
@@ -67,6 +67,13 @@ Cette session a permis de corriger **8 bugs d'instabilité** majeurs identifiés
 **Solution** : Timeout de 200ms pour permettre le chargement  
 **Impact** : Pas de flash de login, dashboard direct  
 
+### 9. Flash de Login au Refresh (Bug Critique Client) ✅
+
+**Symptôme** : Flash visible de login à chaque refresh sur tous les modules et rôles  
+**Cause** : `if (!user)` s'exécutait avant que `authLoading` soit terminé  
+**Solution** : Spinner pendant `authLoading` pour éviter l'affichage de Login  
+**Impact** : **BUG RÉSOLU - Client satisfait**  
+
 ---
 
 ## 📊 Statistiques
@@ -87,7 +94,9 @@ Cette session a permis de corriger **8 bugs d'instabilité** majeurs identifiés
 
 1. **App.tsx**
    - Suppression de `authGuard.checkAuth()` à l'initialisation
-   - Ajout timeout 200ms pour protection de routes
+   - Ajout timeout 200ms puis 500ms pour protection de routes
+   - Utilisation de `authLoading` pour éviter le flash
+   - Spinner pendant `authLoading`
    - Simplification de l'initialisation
    - Logs déplacés dans `useEffect`
 
@@ -230,6 +239,7 @@ window.exportLogs()
 ---
 
 **Date de création** : Janvier 2025  
-**Version** : 2.2  
+**Version** : 2.3  
+**Statut** : ✅ **TOUS LES BUGS RÉSOLUS - CLIENT SATISFAIT**  
 **Auteur** : Système de développement EcosystIA
 
