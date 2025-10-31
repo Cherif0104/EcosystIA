@@ -1238,7 +1238,7 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard setView={handleSetView} projects={projects} courses={courses} jobs={jobs} timeLogs={timeLogs} leaveRequests={leaveRequests} invoices={invoices} expenses={expenses} />;
+        return <Dashboard setView={handleSetView} projects={projects} courses={courses} jobs={jobs} timeLogs={timeLogs} leaveRequests={leaveRequests} invoices={invoices} expenses={expenses} isDataLoaded={isDataLoaded} />;
       case 'time_tracking':
         return <TimeTracking 
                     timeLogs={timeLogs} 
@@ -1263,6 +1263,7 @@ const App: React.FC = () => {
                     onAddTimeLog={handleAddTimeLog}
                     isLoading={isLoading}
                     loadingOperation={loadingOperation}
+                    isDataLoaded={isDataLoaded}
                 />;
       case 'goals_okrs':
         return <Goals 
@@ -1274,6 +1275,7 @@ const App: React.FC = () => {
                     onDeleteObjective={handleDeleteObjective}
                     isLoading={isLoading}
                     loadingOperation={loadingOperation}
+                    isDataLoaded={isDataLoaded}
                 />;
       case 'courses':
         return <Courses 

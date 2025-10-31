@@ -12,6 +12,7 @@ interface DashboardProps {
   leaveRequests: LeaveRequest[];
   invoices: Invoice[];
   expenses: Expense[];
+  isDataLoaded?: boolean;
 }
 
 const CourseCard: React.FC<{ course: Course }> = ({ course }) => {
@@ -829,11 +830,28 @@ const MetricsDashboard: React.FC<{
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ setView, projects, courses, jobs, timeLogs, leaveRequests, invoices, expenses }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setView, projects, courses, jobs, timeLogs, leaveRequests, invoices, expenses, isDataLoaded = true }) => {
   const { user } = useAuth();
   const { t } = useLocalization();
 
   if (!user) return null;
+
+  // Afficher un spinner pendant le chargement initial des données
+  if (!isDataLoaded) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            Chargement du tableau de bord...
+          </h3>
+          <p className="text-gray-600">
+            Veuillez patienter pendant le chargement des données
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Utiliser fullName s'il existe, sinon name
   const userName = (user as any).fullName || (user as any).name || user.email || 'Utilisateur';
