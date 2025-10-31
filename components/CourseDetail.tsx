@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContextSupabase';
 import { Course, Lesson, Module, TimeLog, Project, EvidenceDocument } from '../types';
 import LogTimeModal from './LogTimeModal';
 import { DataService } from '../services/dataService';
+import logger from '../services/loggerService';
 
 interface CourseDetailProps {
     course: Course;
@@ -149,6 +150,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
     const { user } = useAuth();
     const [isLogTimeModalOpen, setLogTimeModalOpen] = useState(false);
     const [isLoadingModules, setIsLoadingModules] = useState(true);
+    const modulesLoadedRef = useRef<string | null>(null); // Pour éviter les chargements multiples
 
     if (!user) return null;
 
@@ -157,18 +159,21 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
         const loadCourseData = async () => {
             if (!user || !course.id) return;
             
-            // Ne charger que si les modules ne sont pas déjà chargés
-            if (course.modules && course.modules.length > 0) {
+            // Éviter les chargements multiples pour le même cours
+            if (modulesLoadedRef.current === course.id) {
                 setIsLoadingModules(false);
                 return;
             }
             
             setIsLoadingModules(true);
             try {
+                logger.info('course', `Chargement modules pour cours: ${course.id}`);
                 const userId = (user as any).profileId || user.id;
                 
                 // Charger les modules et leçons
                 const modulesResult = await DataService.getCourseModules(course.id);
+                logger.info('course', `Résultat getCourseModules: ${modulesResult.error ? 'ERROR' : 'OK'}, ${modulesResult.data?.length || 0} modules`);
+                
                 if (!modulesResult.error && modulesResult.data) {
                     const mappedModules: Module[] = modulesResult.data.map((mod: any) => ({
                         id: mod.id,
@@ -182,10 +187,14 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                         }))
                     }));
                     
+                    logger.info('course', `Modules mappés: ${mappedModules.length} modules, ${mappedModules.reduce((sum, m) => sum + m.lessons.length, 0)} leçons`);
+                    
                     // Charger la progression de l'utilisateur
                     const enrollmentResult = await DataService.getCourseEnrollment(course.id, String(userId));
                     const completedLessons = enrollmentResult.data?.completed_lessons || [];
                     const progress = enrollmentResult.data?.progress || 0;
+                    
+                    logger.info('course', `Progression chargée: ${progress}%, ${completedLessons.length} leçons complétées`);
                     
                     // Mettre à jour le cours avec les modules et la progression
                     onUpdateCourse({
@@ -197,7 +206,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
 
                     // Créer l'enrollment s'il n'existe pas encore (inscription auto)
                     if (!enrollmentResult.data && mappedModules.length > 0) {
-                        console.log('📝 Inscription automatique au cours:', course.id);
+                        logger.info('course', `Inscription automatique au cours: ${course.id}`);
                         await DataService.upsertCourseEnrollment(
                             course.id,
                             String(userId),
@@ -205,9 +214,13 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBack, timeLogs, o
                             []
                         );
                     }
+                    
+                    modulesLoadedRef.current = course.id;
+                } else {
+                    logger.error('course', `Erreur chargement modules:`, modulesResult.error);
                 }
             } catch (error) {
-                console.error('❌ Erreur chargement modules:', error);
+                logger.error('course', `Erreur chargement modules:`, error);
             } finally {
                 setIsLoadingModules(false);
             }
